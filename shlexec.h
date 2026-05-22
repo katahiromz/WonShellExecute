@@ -66,7 +66,7 @@ WonShellExecuteA(
     #define WonShellExecuteEx WonShellExecuteExA
 #endif
 
-typedef HINSTANCE (__stdcall *FN_WOWSHELLEXECCB)(LPSTR pszCommand, INT nCmdShow, LPSTR pszWorkDir);
+typedef HINSTANCE (__stdcall *FN_WOWSHELLEXECCB)(LPCSTR pszCommand, INT nCmdShow, LPCSTR pszWorkDir);
 
 EXTERN_C HINSTANCE WINAPI
 WonWOWShellExecute(

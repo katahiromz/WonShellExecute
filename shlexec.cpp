@@ -239,7 +239,6 @@ static const ERROR_INST_PAIR g_ErrorInstPairs[] =
 HINSTANCE g_hinst = GetModuleHandleW(NULL);
 extern GUID POLID_PreXPSP2ShellProtocolBehavior;
 
-typedef HINSTANCE (CALLBACK* FN_WOWSHELLEXECCB)(LPSTR, INT nCmdShow, LPSTR);
 FN_WOWSHELLEXECCB g_pfnWowShellExecCB = NULL;
 
 HINSTANCE WINAPI RealShellExecuteExA(
