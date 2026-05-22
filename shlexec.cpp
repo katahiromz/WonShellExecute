@@ -2118,11 +2118,6 @@ WonShellExecuteExA(LPSHELLEXECUTEINFOA sei)
     return ret;
 }
 
-static inline int SHGetAppCompatFlags(int)
-{
-    return 0;
-}
-
 EXTERN_C HINSTANCE WINAPI
 WonShellExecuteA(HWND hWnd, LPCSTR lpVerb, LPCSTR lpFile, LPCSTR lpParameters, LPCSTR lpDirectory, INT iShowCmd)
 {

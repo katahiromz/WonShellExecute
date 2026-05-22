@@ -406,3 +406,8 @@ DWORD SHGetObjectCompatFlags(IUnknown *pUnk, const CLSID *clsid);
 BYTE staticIsOS(DWORD dwInfoType);
 BOOL IsMachineDomainMember(void);
 DWORD WINAPI SHGetAppCompatFlags(_In_ DWORD dwMask);
+
+static inline int SHGetAppCompatFlags(int)
+{
+    return 0;
+}
