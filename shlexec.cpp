@@ -1278,7 +1278,7 @@ HRESULT CShellExecute::_BuildEnvironmentForNewProcess(PCWSTR pszEnvEntry)
         WCHAR *pch = StrChrW(m_szEnvEntry, L'=');
         if (pch)
         {
-            *pch = L'\0';
+            *pch = UNICODE_NULL;
             hr = m_EnvBlock.SetVar(m_szEnvEntry, pch + 1);
             if (FAILED(hr))
                 return hr;
