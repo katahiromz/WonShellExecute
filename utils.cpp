@@ -709,107 +709,107 @@ BOOL _SHCreateProcess(
 
         switch (nRunAs)
         {
-        case 0:
+            case 0:
 #ifdef NO_RUNAS
-        default:
+            default:
 #endif
-            bSuccess = CreateProcessW(
-                pszPath, pszCommand,
-                lpProcessAttribute, lpThreadAttribute,
-                bInheritHandles, dwCreationFlags,
-                pszzEnvBlock, pszWorkDir, psi, ppi);
-            break;
-
-#ifndef NO_RUNAS
-        case 1:
-            if (hUserToken)
-            {
-                bSuccess = CreateProcessAsUserW(
-                    hUserToken,
-                    pszPath, pszCommand,
-                    lpProcessAttribute, lpThreadAttribute,
-                    bInheritHandles,
-                    dwCreationFlags | CREATE_PRESERVE_CODE_AUTHZ_LEVEL,
-                    pszzEnvBlock, pszWorkDir, psi, ppi);
-            }
-            else
-            {
                 bSuccess = CreateProcessW(
-                    pszPath, pszCommand,
-                    lpProcessAttribute, lpThreadAttribute,
-                    bInheritHandles,
-                    dwCreationFlags | CREATE_PRESERVE_CODE_AUTHZ_LEVEL,
-                    pszzEnvBlock, pszWorkDir, psi, ppi);
-            }
-            break;
-
-        case 2:
-            if (HANDLE hSandboxToken = _GetSandboxToken())
-            {
-                bSuccess = CreateProcessAsUserW(
-                    hSandboxToken,
                     pszPath, pszCommand,
                     lpProcessAttribute, lpThreadAttribute,
                     bInheritHandles, dwCreationFlags,
                     pszzEnvBlock, pszWorkDir, psi, ppi);
-                CloseHandle(hSandboxToken);
-            }
-            break;
+                break;
 
-        case 3:
-        {
-            HRESULT hrTS = InstallOnTerminalServerWithUIDD(
-                hWnd,
-                pszPath, pszCommand,
-                lpProcessAttribute, lpThreadAttribute,
-                bInheritHandles, dwCreationFlags,
-                pszzEnvBlock, pszWorkDir, psi, ppi);
+#ifndef NO_RUNAS
+            case 1:
+                if (hUserToken)
+                {
+                    bSuccess = CreateProcessAsUserW(
+                        hUserToken,
+                        pszPath, pszCommand,
+                        lpProcessAttribute, lpThreadAttribute,
+                        bInheritHandles,
+                        dwCreationFlags | CREATE_PRESERVE_CODE_AUTHZ_LEVEL,
+                        pszzEnvBlock, pszWorkDir, psi, ppi);
+                }
+                else
+                {
+                    bSuccess = CreateProcessW(
+                        pszPath, pszCommand,
+                        lpProcessAttribute, lpThreadAttribute,
+                        bInheritHandles,
+                        dwCreationFlags | CREATE_PRESERVE_CODE_AUTHZ_LEVEL,
+                        pszzEnvBlock, pszWorkDir, psi, ppi);
+                }
+                break;
 
-            bSuccess = SUCCEEDED(hrTS);
-            dwLastError = ((hrTS & 0x1FFF0000) == FACILITY_WIN32 << 16)
-                ? static_cast<DWORD>(HRESULT_CODE(hrTS))
-                : ERROR_ACCESS_DENIED;
-            break;
-        }
+            case 2:
+                if (HANDLE hSandboxToken = _GetSandboxToken())
+                {
+                    bSuccess = CreateProcessAsUserW(
+                        hSandboxToken,
+                        pszPath, pszCommand,
+                        lpProcessAttribute, lpThreadAttribute,
+                        bInheritHandles, dwCreationFlags,
+                        pszzEnvBlock, pszWorkDir, psi, ppi);
+                    CloseHandle(hSandboxToken);
+                }
+                break;
 
-        case 4:
-        case 5:
-        {
-            WCHAR *pszSavedDesktop = psi->lpDesktop;
-            szUserName[_countof(szUserName) - 1] = L'\0';
-            szDomain  [_countof(szDomain)   - 1] = L'\0';
-
-            bSuccess = CreateProcessWithLogonW(
-                szUserName, szDomain, szPassword,
-                LOGON_WITH_PROFILE,
-                pszPath, pszCommand,
-                dwCreationFlags, NULL,
-                pszWorkDir, psi, ppi);
-
-            if (bSuccess)
-                goto done;
-
-            psi->lpDesktop = pszSavedDesktop;
-            dwLastError    = GetLastError();
-
-            if (_IsLogonError(dwLastError))
+            case 3:
             {
-                LoadStringW(g_hinst, 0x192Au, szBuffer, _countof(szBuffer));
-                SHSysErrorMessageBox(hWnd, szDest, 4230, dwLastError, szBuffer, MB_ICONERROR);
+                HRESULT hrTS = InstallOnTerminalServerWithUIDD(
+                    hWnd,
+                    pszPath, pszCommand,
+                    lpProcessAttribute, lpThreadAttribute,
+                    bInheritHandles, dwCreationFlags,
+                    pszzEnvBlock, pszWorkDir, psi, ppi);
+
+                bSuccess = SUCCEEDED(hrTS);
+                dwLastError = ((hrTS & 0x1FFF0000) == FACILITY_WIN32 << 16)
+                    ? static_cast<DWORD>(HRESULT_CODE(hrTS))
+                    : ERROR_ACCESS_DENIED;
+                break;
+            }
+
+            case 4:
+            case 5:
+            {
+                WCHAR *pszSavedDesktop = psi->lpDesktop;
+                szUserName[_countof(szUserName) - 1] = L'\0';
+                szDomain  [_countof(szDomain)   - 1] = L'\0';
+
+                bSuccess = CreateProcessWithLogonW(
+                    szUserName, szDomain, szPassword,
+                    LOGON_WITH_PROFILE,
+                    pszPath, pszCommand,
+                    dwCreationFlags, NULL,
+                    pszWorkDir, psi, ppi);
+
+                if (bSuccess)
+                    goto done;
+
+                psi->lpDesktop = pszSavedDesktop;
+                dwLastError    = GetLastError();
+
+                if (_IsLogonError(dwLastError))
+                {
+                    LoadStringW(g_hinst, 0x192Au, szBuffer, _countof(szBuffer));
+                    SHSysErrorMessageBox(hWnd, szDest, 4230, dwLastError, szBuffer, MB_ICONERROR);
 
 retry_logon:
-                nRunAs = _LogonUser(hWnd, nRunAs, szDest);
-                continue;
+                    nRunAs = _LogonUser(hWnd, nRunAs, szDest);
+                    continue;
+                }
+                break;
             }
-            break;
-        }
 
-        case 6:
-            SetLastError(ERROR_CANCELLED);
-            goto cleanup;
+            case 6:
+                SetLastError(ERROR_CANCELLED);
+                goto cleanup;
 
-        default:
-            goto cleanup;
+            default:
+                goto cleanup;
 #endif
         }
 
@@ -1368,20 +1368,20 @@ INT GetExeType(LPCWSTR lpFileName)
 
     switch (extTag)
     {
-    case EXT_CMD:
-    case EXT_BAT:
-        return IMAGE_NT_SIGNATURE;
+        case EXT_CMD:
+        case EXT_BAT:
+            return IMAGE_NT_SIGNATURE;
 
-    case EXT_COM:
-        if (PathIsUNCServerW(lpFileName) || PathIsUNCServerShareW(lpFileName))
+        case EXT_COM:
+            if (PathIsUNCServerW(lpFileName) || PathIsUNCServerShareW(lpFileName))
+                return 0;
+            return IMAGE_DOS_SIGNATURE;
+
+        case EXT_EXE:
+            break;
+
+        default:
             return 0;
-        return IMAGE_DOS_SIGNATURE;
-
-    case EXT_EXE:
-        break;
-
-    default:
-        return 0;
     }
 
     HANDLE hFile = CreateFileW(lpFileName,
