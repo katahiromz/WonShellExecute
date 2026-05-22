@@ -239,7 +239,7 @@ static const ERROR_INST_PAIR g_ErrorInstPairs[] =
 HINSTANCE g_hinst = GetModuleHandleW(NULL);
 extern GUID POLID_PreXPSP2ShellProtocolBehavior;
 
-WOWSHELLEXECHOOKPROC g_pfnWowShellExecCB = NULL;
+WOWSHELLEXECHOOKPROC g_fnWowShellExecCB = NULL;
 
 HINSTANCE WINAPI RealShellExecuteExA(
     HWND    hwnd,
@@ -308,11 +308,11 @@ HINSTANCE __stdcall WOWShellExecute(
 {
     HINSTANCE result;
 
-    g_pfnWowShellExecCB = callback;
+    g_fnWowShellExecCB = callback;
     if (!lpParameters)
         lpParameters = "";
     result = RealShellExecuteExA(hwnd, lpOperation, lpFile, lpParameters, lpDirectory, NULL, "", NULL, nShowCmd, NULL, 0);
-    g_pfnWowShellExecCB = NULL;
+    g_fnWowShellExecCB = NULL;
     return result;
 }
 
@@ -1202,12 +1202,12 @@ DWORD CShellExecute::_TryWowShellExec()
 {
     ShStrA str1, str2;
 
-    if (!g_pfnWowShellExecCB)
+    if (!g_fnWowShellExecCB)
         return ERROR_FILE_NOT_FOUND;
 
     HINSTANCE hinstApp = (HINSTANCE)SE_ERR_OOM;
     if (SUCCEEDED(str1.SetStr(m_szCommand, -1)) && SUCCEEDED(str2.SetStr(m_szWorkDir, -1)))
-        hinstApp = g_pfnWowShellExecCB(str1, m_si.wShowWindow, str2);
+        hinstApp = g_fnWowShellExecCB(str1, m_si.wShowWindow, str2);
 
     if (!_ReportHinst(hinstApp))
     {
@@ -2274,10 +2274,10 @@ WonWOWShellExecute(
     WOWSHELLEXECHOOKPROC callback)
 {
     HINSTANCE result;
-    g_pfnWowShellExecCB = callback;
+    g_fnWowShellExecCB = callback;
     if (!lpParameters)
         lpParameters = "";
     result = RealShellExecuteExA(hWnd, lpVerb, lpFile, lpParameters, lpDirectory, 0, "", 0, iShowCmd, 0, 0);
-    g_pfnWowShellExecCB = NULL;
+    g_fnWowShellExecCB = NULL;
     return result;
 }
