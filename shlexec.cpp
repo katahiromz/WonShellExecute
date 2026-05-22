@@ -239,7 +239,7 @@ static const ERROR_INST_PAIR g_ErrorInstPairs[] =
 HINSTANCE g_hinst = GetModuleHandleW(NULL);
 extern GUID POLID_PreXPSP2ShellProtocolBehavior;
 
-FN_WOWSHELLEXECCB g_pfnWowShellExecCB = NULL;
+WOWSHELLEXECHOOKPROC g_pfnWowShellExecCB = NULL;
 
 HINSTANCE WINAPI RealShellExecuteExA(
     HWND    hwnd,
@@ -304,7 +304,7 @@ HINSTANCE __stdcall WOWShellExecute(
     LPCSTR lpParameters,
     LPCSTR lpDirectory,
     WORD nShowCmd,
-    FN_WOWSHELLEXECCB callback)
+    WOWSHELLEXECHOOKPROC callback)
 {
     HINSTANCE result;
 
@@ -2276,7 +2276,7 @@ WonWOWShellExecute(
     LPCSTR lpParameters,
     LPCSTR lpDirectory,
     INT iShowCmd,
-    FN_WOWSHELLEXECCB callback)
+    WOWSHELLEXECHOOKPROC callback)
 {
     HINSTANCE result;
     g_pfnWowShellExecCB = callback;
