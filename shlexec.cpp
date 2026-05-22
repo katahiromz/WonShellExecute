@@ -109,8 +109,10 @@ struct CShellExecute
     BOOL m_bInvokeIDList;
     BOOL m_bCloseProcess;
 
-    CShellExecute() : m_cRefs(1)
+    CShellExecute()
     {
+        ZeroMemory(this, sizeof(*this));
+        m_cRefs = 1;
     }
 
     void ExecuteNormal(LPSHELLEXECUTEINFOW sei);
@@ -127,9 +129,7 @@ public:
 
     void* operator new(size_t count)
     {
-        void* ptr = CoTaskMemAlloc(count);
-        ZeroMemory(ptr, count);
-        return ptr;
+        return CoTaskMemAlloc(count);
     }
 
     void operator delete(void* ptr)
@@ -999,7 +999,7 @@ HGLOBAL CShellExecute::_CreateDDECommand(INT nCmdShow, BOOL bLongNameOK, BOOL bU
             LPWSTR psz = (LPWSTR)GlobalLock(hGlobal);
             if (psz)
             {
-                StrCpyNW(psz, strW, (INT)(GlobalSize(hGlobal) / sizeof(WCHAR)));
+                StrCpyNW(psz, strW, (INT)(cb / sizeof(WCHAR)));
                 GlobalUnlock(hGlobal);
                 hResult = hGlobal;
             }
@@ -1015,15 +1015,14 @@ HGLOBAL CShellExecute::_CreateDDECommand(INT nCmdShow, BOOL bLongNameOK, BOOL bU
         if (SUCCEEDED(strA.SetStr(strW, -1)))
         {
             const INT cch = lstrlenA(strA);
-            const SIZE_T cb = (cch + 1) * sizeof(CHAR);
-
-            HGLOBAL hGlobal = GlobalAlloc(GMEM_DDESHARE | GMEM_MOVEABLE, cb * 2);
+            const SIZE_T cb = 2 * (cch + 1) * sizeof(CHAR);
+            HGLOBAL hGlobal = GlobalAlloc(GMEM_DDESHARE | GMEM_MOVEABLE, cb);
             if (hGlobal)
             {
-                PCHAR psz = static_cast<PCHAR>(GlobalLock(hGlobal));
+                PCHAR psz = (PCHAR)GlobalLock(hGlobal);
                 if (psz)
                 {
-                    lstrcpynA(psz, strA, (INT)GlobalSize(hGlobal));
+                    lstrcpynA(psz, strA, (INT)(cb / sizeof(CHAR)));
                     GlobalUnlock(hGlobal);
                     hResult = hGlobal;
                 }
@@ -1084,7 +1083,7 @@ CShellExecute::_PostDDEExecute(HWND hHiddenWnd, HWND hConvWnd, UINT_PTR uiHi, HA
     if (!PostMessageW(hConvWnd, WM_DDE_EXECUTE, (WPARAM)hHiddenWnd, lParam))
         return FALSE;
 
-    const HINSTANCE hInst = reinterpret_cast<HINSTANCE>(Window_GetInstance(hConvWnd));
+    const HINSTANCE hInst = Window_GetInstance(hConvWnd);
     _ReportHinst(hInst);
 
     if (hDoneEvent)
@@ -1139,7 +1138,7 @@ IRET CShellExecute::_DDEExecute(BOOL bFlag, HWND hWnd, INT nCmdShow, BOOL bNoAsy
         else
         {
             if (m_bActivateHandler)
-                ActivateHandler(hConvWnd, reinterpret_cast<WPARAM>(m_si.hStdInput));
+                ActivateHandler(hConvWnd, (WPARAM)m_si.hStdInput);
 
             const BOOL bLongNameAware = Window_IsLFNAware(hConvWnd);
             const BOOL bUnicode       = IsWindowUnicode(hConvWnd);
@@ -1159,7 +1158,7 @@ IRET CShellExecute::_DDEExecute(BOOL bFlag, HWND hWnd, INT nCmdShow, BOOL bNoAsy
             }
 
             dwError = ERROR_DDE_FAIL;
-            if (_PostDDEExecute(hHiddenWnd, hConvWnd, reinterpret_cast<UINT_PTR>(hDdeCommand), hEvent))
+            if (_PostDDEExecute(hHiddenWnd, hConvWnd, (UINT_PTR)hDdeCommand, hEvent))
             {
                 hDdeCommand = NULL;
                 bSuccess    = 1;

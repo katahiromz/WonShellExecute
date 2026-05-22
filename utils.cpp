@@ -601,7 +601,7 @@ HRESULT SEI2ICIX(
         RECT rcMonitor;
         if (hMonitor && GetMonitorRects(hMonitor, &rcMonitor, FALSE))
         {
-            reinterpret_cast<BYTE *>(&pICIX->fMask)[2] |= 0x20; // CMIC_MASK_PTINVOKE
+            pICIX->fMask |= CMIC_MASK_PTINVOKE;
             pICIX->ptInvoke = { rcMonitor.left, rcMonitor.top };
         }
     }
@@ -1211,7 +1211,7 @@ INT ReplaceParameters(
             {
                 // %h : Value in hexadecimal
                 HANDLE hVal = phToken ? *phToken : NULL;
-                wnsprintfW(szPath, MAX_PATH, L"%X", reinterpret_cast<ULONG_PTR>(hVal));
+                wnsprintfW(szPath, MAX_PATH, L"%X", (ULONG_PTR)hVal);
                 INT cch = lstrlenW(szPath);
                 if (!CAN_WRITE(cch + 1))
                     return ERROR_INSUFFICIENT_BUFFER;
@@ -1239,8 +1239,7 @@ INT ReplaceParameters(
                     if (!*phDdeData)
                         return ERROR_OUTOFMEMORY;
                 }
-                wnsprintfW(szPath, MAX_PATH, L":%ld:%ld",
-                    reinterpret_cast<ULONG_PTR>(*phDdeData), GetCurrentProcessId());
+                wnsprintfW(szPath, MAX_PATH, L":%ld:%ld", HandleToUlong(*phDdeData), GetCurrentProcessId());
                 APPEND_PATH(szPath);
                 break;
             }
@@ -1583,7 +1582,7 @@ LRESULT CALLBACK DDESubClassWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM 
 
         case WM_DDE_ACK:
         {
-            const HWND hSender = reinterpret_cast<HWND>(wParam);
+            const HWND hSender = (HWND)wParam;
             if (!hConvWnd)
             {
                 SetPropW(hWnd, L"ddeconv", hSender);
@@ -1598,7 +1597,7 @@ LRESULT CALLBACK DDESubClassWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM 
             UINT_PTR uiLo = 0, uiHi = 0;
             if (UnpackDDElParam(WM_DDE_ACK, lParam, &uiLo, &uiHi))
             {
-                GlobalFree(reinterpret_cast<HGLOBAL>(uiHi));
+                GlobalFree((HGLOBAL)uiHi);
                 FreeDDElParam(WM_DDE_ACK, lParam);
             }
 

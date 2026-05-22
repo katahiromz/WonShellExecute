@@ -71,10 +71,10 @@ static inline void EnsureVerInfo()
     g_bGotVerInfo = TRUE;
     g_verInfo.dwOSVersionInfoSize = sizeof(OSVERSIONINFOEXA);
 
-    if (!GetVersionExA(reinterpret_cast<LPOSVERSIONINFOA>(&g_verInfo)))
+    if (!GetVersionExA((LPOSVERSIONINFOA)&g_verInfo))
     {
         g_verInfo.dwOSVersionInfoSize = sizeof(OSVERSIONINFOA);
-        GetVersionExA(reinterpret_cast<LPOSVERSIONINFOA>(&g_verInfo));
+        GetVersionExA((LPOSVERSIONINFOA)&g_verInfo);
     }
 }
 
