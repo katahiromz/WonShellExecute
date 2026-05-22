@@ -1,4 +1,4 @@
-// tests.cpp --- WonShellExecute tests
+// test1.cpp --- WonShellExecute tests
 // Author: katahiromz
 // License: MIT
 #include <windows.h>

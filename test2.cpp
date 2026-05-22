@@ -1,4 +1,4 @@
-// tests.cpp --- WonShellExecute tests
+// test2.cpp --- WonShellExecute tests
 // Author: katahiromz
 // License: MIT
 #include <windows.h>
@@ -7,7 +7,7 @@
 #include <string>
 #include "shlexec.h"
 
-int main(int argc, char **argv)
+int main(void)
 {
     HWND hwnd = NULL;
     LPITEMIDLIST pidl;
