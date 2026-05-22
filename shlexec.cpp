@@ -262,7 +262,7 @@ HINSTANCE WINAPI RealShellExecuteExA(
     if (lpReserved)
     {
         sei.fMask |= SEE_MASK_FLAG_SEPVDM;
-        sei.hInstApp = static_cast<HINSTANCE>(lpReserved);
+        sei.hInstApp = (HINSTANCE)lpReserved;
     }
 
     if (lpTitle)
@@ -384,7 +384,7 @@ void CShellExecute::_SetStartup(const SHELLEXECUTEINFOW* pInfo)
 {
     m_si.cb = sizeof(STARTUPINFOW);
     m_si.dwFlags |= STARTF_USESHOWWINDOW;
-    m_si.wShowWindow = static_cast<WORD>(pInfo->nShow);
+    m_si.wShowWindow = (WORD)pInfo->nShow;
     m_si.lpTitle = m_pszTitle;
 
     if (pInfo->fMask & SEE_MASK_HASIDLIST)

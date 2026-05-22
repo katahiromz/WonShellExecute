@@ -403,7 +403,6 @@ BOOL App_IsLFNAware(LPCWSTR lpFileName);
 DWORD CheckForAppPathsBoolValue(LPCWSTR pszPath, LPCWSTR pszValue);
 DWORD SHGetAttributes(IShellFolder* psf, LPCITEMIDLIST pidl, DWORD dwAttributes);
 DWORD SHGetObjectCompatFlags(IUnknown *pUnk, const CLSID *clsid);
-BYTE staticIsOS(DWORD dwInfoType);
 BOOL IsMachineDomainMember(void);
 DWORD WINAPI SHGetAppCompatFlags(_In_ DWORD dwMask);
 

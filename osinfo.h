@@ -167,4 +167,4 @@
     #define SUITE_WH_SERVER 0x8000
 #endif
 
-BYTE staticIsOS(DWORD dwInfoType);
+BOOL staticIsOS(DWORD dwInfoType);

@@ -334,8 +334,8 @@ IUserAssist* GetUserAssist(VOID)
         return g_uempUa;
 
     const CLSCTX clsctx = staticIsOS(OS_NT5ORGREATER)
-        ? static_cast<CLSCTX>(CLSCTX_INPROC_SERVER | CLSCTX_INPROC_HANDLER | CLSCTX_LOCAL_SERVER)
-        : static_cast<CLSCTX>(CLSCTX_INPROC_SERVER | CLSCTX_INPROC_HANDLER);
+        ? (CLSCTX)(CLSCTX_INPROC_SERVER | CLSCTX_INPROC_HANDLER | CLSCTX_LOCAL_SERVER)
+        : (CLSCTX)(CLSCTX_INPROC_SERVER | CLSCTX_INPROC_HANDLER);
 
     IUserAssist* pUA = NULL;
     CoCreateInstance(CLSID_UserAssist, NULL, clsctx, IID_PPV_ARGS(&pUA));
@@ -841,7 +841,7 @@ BOOL VariantToBuffer(const VARIANT* const pVarIn, void* pvDataOut, UINT cbToCopy
         return FALSE;
     }
 
-    ULONG cElements = (lUbound >= lLbound) ? static_cast<ULONG>(lUbound - lLbound + 1) : 0;
+    ULONG cElements = (lUbound >= lLbound) ? (ULONG)(lUbound - lLbound + 1) : 0;
     if (cElements < cbToCopy)
         return FALSE;
 
@@ -1091,7 +1091,7 @@ PCWSTR _GetNextParm(PCWSTR pszStart, PWSTR pszDst, unsigned int cchDstMax)
                         {
                             return NULL;
                         }
-                        StrCpyNW(pszDst, pszStart, static_cast<int>(cchCopy + 1));
+                        StrCpyNW(pszDst, pszStart, (INT)(cchCopy + 1));
                     }
                     return pNextSpace;
                 }
@@ -1103,7 +1103,7 @@ PCWSTR _GetNextParm(PCWSTR pszStart, PWSTR pszDst, unsigned int cchDstMax)
                     size_t cchCopy = lstrlenW(pszStart);
                     if ((size_t)(pDstEnd - pszDst) >= cchCopy)
                     {
-                        StrCpyNW(pszDst, pszStart, static_cast<int>(cchCopy + 1));
+                        StrCpyNW(pszDst, pszStart, (INT)(cchCopy + 1));
                     }
                 }
                 return NULL;
@@ -1121,7 +1121,7 @@ PCWSTR _GetNextParm(PCWSTR pszStart, PWSTR pszDst, unsigned int cchDstMax)
             if ((size_t)(pDstEnd - pszDst) < cchCopy)
                 return NULL;
 
-            StrCpyNW(pszDst, pszStart, static_cast<int>(cchCopy + 1));
+            StrCpyNW(pszDst, pszStart, (INT)(cchCopy + 1));
             pszDst += cchCopy;
         }
 
@@ -1421,7 +1421,7 @@ INT GetExeType(LPCWSTR lpFileName)
     }
     else if (rawHeader[0] == ('N' | 'E' << 8))
     {
-        const BYTE neSubsystem = static_cast<BYTE>(rawHeader[27]);
+        const BYTE neSubsystem = (BYTE)rawHeader[27];
         if (neSubsystem != 2 && neSubsystem != 0)
         {
             headerSig = IMAGE_DOS_SIGNATURE;
@@ -1534,7 +1534,7 @@ HANDLE _WaitForDDEMsg(HWND hWnd, DWORD dwMilliseconds, UINT uTerminateMsg)
 
 LRESULT CALLBACK DDESubClassWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-    HWND hConvWnd = static_cast<HWND>(GetPropW(hWnd, L"ddeconv"));
+    HWND hConvWnd = (HWND)GetPropW(hWnd, L"ddeconv");
 
     switch (uMsg)
     {
