@@ -13,4 +13,4 @@ target_link_libraries(shlexec comctl32)
 
 # tests.exe
 add_executable(tests tests.cpp)
-target_link_libraries(tests shlexec)
+target_link_libraries(tests PRIVATE shlexec shlwapi)

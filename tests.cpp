@@ -4,6 +4,7 @@
 #include <windows.h>
 #include <stdio.h>
 #include <string>
+#include "shlexec.h"
 
 void usage(void)
 {
@@ -63,6 +64,6 @@ int main(int argc, char **argv)
 
     std::string params = ArgvToCommandLineA(argc - 2, argv + 2);
 
-    BOOL bOK = ((INT_PTR)ShellExecuteA(NULL, NULL, argv[1], params.c_str(), NULL, SW_SHOWNORMAL) > 32);
+    BOOL bOK = ((INT_PTR)WonShellExecuteA(NULL, NULL, argv[1], params.c_str(), NULL, SW_SHOWNORMAL) > 32);
     return bOK ? 0 : 1;
 }

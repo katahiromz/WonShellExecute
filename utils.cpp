@@ -1,6 +1,7 @@
 ﻿// utils.cpp --- Utility functions
 // Author: katahiromz
 // License: MIT
+#include <initguid.h>
 #include <windows.h>
 #include <shellapi.h>
 #include <shlobj.h>
@@ -11,19 +12,41 @@
 #include "shlexec.h"
 #include "utils.h"
 
+extern "C" {
+
 extern HINSTANCE g_hinst;
 BOOL g_bGotDisableMSI = FALSE;
 HRESULT g_hrDisableIMI = S_FALSE;
 CRITICAL_SECTION g_csDll;
 BOOL g_bCurrentProcessIsConsole = FALSE;
+INT g_bInDllProcess = -1;
 #ifndef NO_ASSIST
 IUserAssist *g_uempUa = NULL;
 #endif
 
 DEFINE_GUID(SCID_DESCRIPTIONID_GUID,       0x28636AA6, 0x953D, 0x11D2, 0x00B5, 0xD6, 0x00, 0xC0, 0x4F, 0xD9, 0x18, 0xD0);
+DEFINE_GUID(GUID_NULL, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+DEFINE_GUID(POLID_PreXPSP2ShellProtocolBehavior, 0x4FC60822, 0x47AF, 0x4BEE, 0xA7, 0xDA, 0xC9, 0x9A, 0x6E, 0x8E, 0x5D, 0x8D);
 
 static SHCOLUMNID SCID_DESCRIPTIONID = { SCID_DESCRIPTIONID_GUID, 2 };
 
+BOOL InRunDllProcess(VOID)
+{
+    WCHAR szModule[MAX_PATH];
+
+    if (g_bInDllProcess == -1)
+    {
+        g_bInDllProcess = FALSE;
+        if (GetModuleFileNameW(NULL, szModule, _countof(szModule)))
+        {
+            if (StrStrIW(szModule, L"rundll"))
+                g_bInDllProcess = TRUE;
+        }
+    }
+
+    return g_bInDllProcess;
+}
+    
 // @implemented
 BOOL _IsNamespaceObject(LPCWSTR pszpath)
 {
@@ -177,7 +200,7 @@ HRESULT SHPolicyGetValue(
     return hr;
 }
 
-BOOL ProcessAllowsInvalidUrls(VOID)
+BOOL _ProcessAllowsInvalidUrls(VOID)
 {
     static const SHPOLICY_CONSTRAINT c_Bool = { SRRF_RT_DWORD, sizeof(DWORD), FALSE, TRUE };
 
@@ -276,7 +299,7 @@ INT GetUEMAssoc(LPCWSTR pszFile, LPCWSTR pszPath, LPCITEMIDLIST pidl)
     return ret;
 }
 
-HRESULT IsDarwinEnabled(void)
+HRESULT IsDarwinEnabled(VOID)
 {
     static const LPCWSTR RestrictRunKey =
         L"Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\Explorer\\RestrictRun";
@@ -365,11 +388,15 @@ HRESULT UEMFireEvent(
     WPARAM  wparam,
     LPARAM  lparam)
 {
+#ifdef NO_ASSIST
+    return E_NOTIMPL;
+#else
     IUserAssist *pua = GetUserAssist();
     if (!pua)
         return E_FAIL;
 
     return pua->FireEvent(&guid, eCmd, uFlags, wparam, lparam);
+#endif
 }
 
 HRESULT DisplayNameOfW(IShellFolder *psf, LPCITEMIDLIST pidl, DWORD dwFlags, LPWSTR pszBuf, UINT cchBuf)
@@ -1736,3 +1763,58 @@ DWORD WINAPI SHGetAppCompatFlags(_In_ DWORD dwMask)
     // FIXME
     return 0;
 }
+
+VOID SetAppStartingCursor(HWND hWnd, BOOL bStart)
+{
+    // FIXME
+}
+
+HRESULT SHCoInitialize(VOID)
+{
+    HRESULT hr = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
+    if (FAILED(hr))
+        return CoInitializeEx(NULL, COINIT_DISABLE_OLE1DDE);
+    return hr;
+}
+
+DWORD WINAPI SHRegisterClassW(WNDCLASSW * lpWndClass)
+{
+    WNDCLASSW WndClass;
+    if (GetClassInfoW(lpWndClass->hInstance, lpWndClass->lpszClassName, &WndClass))
+        return TRUE;
+    return RegisterClassW(lpWndClass);
+}
+
+HWND WINAPI SHCreateWorkerWindowW(WNDPROC wndProc, HWND hWndParent, DWORD dwExStyle,
+                                  DWORD dwStyle, HMENU hMenu, LONG_PTR wnd_extra)
+{
+  static const WCHAR szClass[] = { 'W', 'o', 'r', 'k', 'e', 'r', 'W', 0 };
+  WNDCLASSW wc;
+  HWND hWnd;
+
+  /* Create Window class */
+  wc.style         = 0;
+  wc.lpfnWndProc   = DefWindowProcW;
+  wc.cbClsExtra    = 0;
+  wc.cbWndExtra    = sizeof(LONG_PTR);
+  wc.hInstance     = GetModuleHandleW(NULL);
+  wc.hIcon         = NULL;
+  wc.hCursor       = LoadCursorW(NULL, (LPWSTR)IDC_ARROW);
+  wc.hbrBackground = (HBRUSH)(COLOR_BTNFACE + 1);
+  wc.lpszMenuName  = NULL;
+  wc.lpszClassName = szClass;
+
+  SHRegisterClassW(&wc);
+
+  hWnd = CreateWindowExW(dwExStyle, szClass, 0, dwStyle, 0, 0, 0, 0,
+                         hWndParent, hMenu, GetModuleHandleA(NULL), 0);
+  if (hWnd)
+  {
+    SetWindowLongPtrW(hWnd, 0, wnd_extra);
+    if (wndProc) SetWindowLongPtrW(hWnd, GWLP_WNDPROC, (LONG_PTR)wndProc);
+  }
+
+  return hWnd;
+}
+
+} // extern "C"

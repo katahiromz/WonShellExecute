@@ -231,9 +231,10 @@ static const ERROR_INST_PAIR g_ErrorInstPairs[] =
     { ERROR_DLL_NOT_FOUND, 32 },
 };
 
-HINSTANCE g_hinst = GetModuleHandleW(NULL);
-extern GUID POLID_PreXPSP2ShellProtocolBehavior;
+EXTERN_C HINSTANCE g_hinst = GetModuleHandleW(NULL);
 
+EXTERN_C GUID POLID_PreXPSP2ShellProtocolBehavior;
+    
 WOWSHELLEXECHOOKPROC g_fnWowShellExecCB = NULL;
 
 HINSTANCE WINAPI RealShellExecuteExA(
