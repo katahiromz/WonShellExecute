@@ -5,6 +5,11 @@
 #include <stdio.h>
 #include <string>
 
+void usage(void)
+{
+    puts("tests [program.exe [parameters]]");
+}
+
 std::string ArgvToCommandLineA(int argc, char **argv)
 {
     std::string cmdline;
@@ -52,7 +57,7 @@ int main(int argc, char **argv)
 {
     if (argc <= 1)
     {
-        puts("tests [your.exe [\"parameters\"]]");
+        usage();
         return 0;
     }
 
