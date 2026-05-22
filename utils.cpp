@@ -327,11 +327,9 @@ HMODULE SHPinDllOfCLSID(REFIID refiid)
     return NULL; // FIXME
 }
 
+#ifndef NO_ASSIST
 IUserAssist* GetUserAssist(VOID)
 {
-#ifdef NO_ASSIST
-    return NULL;
-#else
     if (g_uempUa)
         return g_uempUa;
 
@@ -357,8 +355,8 @@ IUserAssist* GetUserAssist(VOID)
         pUA->Release();
 
     return g_uempUa;
-#endif
 }
+#endif
 
 HRESULT UEMFireEvent(
     REFGUID guid,
