@@ -1324,7 +1324,8 @@ HRESULT CShellExecute::_EvaluateTemplate(LPBOOL pbLongNameOK)
             m_szWorkGroupHelper, _countof(m_szWorkGroupHelper));
 
         DWORD cchFriendlyName = _countof(m_szFriendlyAppName);
-        AssocQueryStringW(0x42,
+
+        AssocQueryStringW(ASSOCF_VERIFY | ASSOCF_INIT_BYEXENAME,
                           ASSOCSTR_FRIENDLYAPPNAME,
                           m_szWorkGroupHelper,
                           NULL,
@@ -1495,7 +1496,7 @@ IRET CShellExecute::_ShouldRetryWithNewClassKey(BOOL bParse)
 {
     if (m_bAlreadyQueriedClassStore ||
         m_bNoQueryClassStore ||
-        FAILED(m_pQueryAssoc->GetData(NULL, (ASSOCDATA)3, NULL, NULL, NULL)))
+        FAILED(m_pQueryAssoc->GetData(NULL, ASSOCDATA_UNUSED1, NULL, NULL, NULL)))
     {
         return IRET_2;
     }
