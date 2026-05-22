@@ -8,7 +8,7 @@ BOOL _IsNamespaceObject(LPCWSTR pszpath);
 BOOL _FailForceReturn(HRESULT hr);
 BOOL _IsLink(LPCWSTR pszPath, DWORD dwFileAttributes);
 BOOL PathIsShortcut(LPCWSTR pszPath, DWORD dwFileAttributes);
-INT TryShellExecuteHooks(LPSHELLEXECUTEINFOW sei);
+HRESULT TryShellExecuteHooks(LPSHELLEXECUTEINFOW sei);
 INT _ProcessAllowsInvalidUrls(void);
 HRESULT IsDarwinEnabled(void);
 DWORD ParseDarwinID(LPWSTR Descriptor, LPWSTR CommandLine, DWORD CommandLineLength);

@@ -631,7 +631,7 @@ BOOL CShellExecute::_ReportHinst(HINSTANCE hInstApp)
 IRET CShellExecute::_TryHooks(LPSHELLEXECUTEINFOW sei)
 {
     DWORD error = ERROR_FILE_NOT_FOUND;
-    if (!(sei->fMask & 0x2000) && TryShellExecuteHooks(sei) != 1)
+    if (!(sei->fMask & SEE_MASK_NO_HOOKS) && TryShellExecuteHooks(sei) != S_FALSE)
     {
         _ReportHinst(sei->hInstApp);
         return IRET_0;

@@ -84,21 +84,21 @@ BOOL PathIsShortcut(LPCWSTR pszPath, DWORD dwFileAttributes)
 
 HRESULT InvokeShellExecuteHook(REFCLSID rclsid, SHELLEXECUTEINFOW* sei, HRESULT *phrResult)
 {
-    // FIXME
-    return E_FAIL;
+    *phrResult = S_FALSE;
+    return E_NOTIMPL; // FIXME
 }
 
-INT TryShellExecuteHooks(LPSHELLEXECUTEINFOW sei)
+HRESULT TryShellExecuteHooks(LPSHELLEXECUTEINFOW sei)
 {
     HKEY hKey;
     if (RegOpenKeyExW(HKEY_LOCAL_MACHINE,
                       L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\ShellExecuteHooks",
                       0, KEY_READ, &hKey) != ERROR_SUCCESS)
     {
-        return 1;
+        return S_FALSE;
     }
 
-    BOOL ret = 1;
+    HRESULT hr = S_FALSE;
 
     for (DWORD iValue = 0; ; ++iValue)
     {
@@ -118,13 +118,13 @@ INT TryShellExecuteHooks(LPSHELLEXECUTEINFOW sei)
         HRESULT hrHook;
         if (!InvokeShellExecuteHook(clsid, sei, &hrHook) && hrHook != S_FALSE)
         {
-            ret = hrHook;
+            hr = hrHook;
             break;
         }
     }
 
     RegCloseKey(hKey);
-    return ret;
+    return hr;
 }
 
 typedef struct tagSHPOLICY_CONSTRAINT
