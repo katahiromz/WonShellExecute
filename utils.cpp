@@ -211,43 +211,40 @@ DWORD SHGetObjectCompatFlags(IUnknown *pUnk, const CLSID *clsid)
     return 0; // FIXME
 }
 
-DWORD SHGetAttributes(IShellFolder* psf, LPCITEMIDLIST pidl, DWORD dwAttributes)
+// @implemented
+DWORD
+SHGetAttributes(_In_ IShellFolder* psf, _In_ LPCITEMIDLIST pidl, _In_ DWORD dwAttributes)
 {
-    LPCITEMIDLIST pidlLast = NULL;
-    if (psf)
-    {
-        psf->AddRef();
-        pidlLast = pidl;
-    }
-    else
-    {
-        SHBindToParent(pidl, IID_PPV_ARGS(&psf), &pidlLast);
-    }
+    LPCITEMIDLIST pidlLast = pidl;
+    IShellFolder *release = NULL;
 
     if (!psf)
-        return 0;
-
-    DWORD dwSFGAO = dwAttributes;
-    if (FAILED(psf->GetAttributesOf(1, &pidlLast, &dwSFGAO)))
     {
-        dwSFGAO = 0;
+        SHBindToParent(pidl, IID_IShellFolder, (PVOID*)&psf, &pidlLast);
+        if (!psf)
+            return 0;
+        release = psf;
     }
+
+    DWORD oldAttrs = dwAttributes;
+    if (FAILED(psf->GetAttributesOf(1, &pidlLast, &dwAttributes)))
+        dwAttributes = 0;
     else
-    {
-        dwSFGAO &= dwAttributes;
+        dwAttributes &= oldAttrs;
 
-        const DWORD dwFolderStream = SFGAO_FOLDER | SFGAO_STREAM;
-        if ((dwSFGAO & dwFolderStream) == dwFolderStream &&
-            (dwSFGAO & SFGAO_STORAGEANCESTOR) == 0 &&
-            (dwAttributes & SFGAO_STORAGEANCESTOR) != 0 &&
-            (SHGetObjectCompatFlags(psf, NULL) & 0x200) != 0)
-        {
-            dwSFGAO = (dwSFGAO & ~(SFGAO_FOLDER | SFGAO_STREAM)) | SFGAO_STORAGEANCESTOR;
-        }
+    if ((dwAttributes & SFGAO_FOLDER) &&
+        (dwAttributes & SFGAO_STREAM) &&
+        !(dwAttributes & SFGAO_STORAGEANCESTOR) &&
+        (oldAttrs & SFGAO_STORAGEANCESTOR) &&
+        (SHGetObjectCompatFlags(psf, NULL) & 0x200))
+    {
+        dwAttributes &= ~(SFGAO_STREAM | SFGAO_STORAGEANCESTOR);
+        dwAttributes |= SFGAO_STORAGEANCESTOR;
     }
 
-    psf->Release();
-    return dwSFGAO;
+    if (release)
+        release->Release();
+    return dwAttributes;
 }
 
 INT GetUEMAssoc(LPCWSTR pszFile, LPCWSTR pszPath, LPCITEMIDLIST pidl)
@@ -269,7 +266,10 @@ INT GetUEMAssoc(LPCWSTR pszFile, LPCWSTR pszPath, LPCITEMIDLIST pidl)
         return 0;
 
     INT ret = 0;
-    if (SHGetAttributes(psf, pidlChild, SFGAO_FOLDER | 0x20000000) == SFGAO_FOLDER)
+#ifndef SFGAO_CANMONIKER
+    #define SFGAO_CANMONIKER 0x400000 // Obsolted
+#endif
+    if (SHGetAttributes(psf, pidlChild, SFGAO_FOLDER | SFGAO_CANMONIKER) == SFGAO_FOLDER)
         ret = 4;
 
     psf->Release();
@@ -538,15 +538,14 @@ HRESULT _InvokeInProcExec(IContextMenu *pContextMenu, LPSHELLEXECUTEINFOW sei)
     const BOOL bNoVerb = !ici.lpVerb || !*ici.lpVerb;
     ici.fMask |= CMIC_MASK_FLAG_NO_UI;
 
-    hr = pContextMenu->QueryContextMenu(hMenu, 0, 1, 0x7FFF, bNoVerb ? CMF_DEFAULTONLY : CMF_NORMAL);
+    hr = pContextMenu->QueryContextMenu(hMenu, 0, 1, 0x7FFF,
+                                        (bNoVerb ? CMF_DEFAULTONLY : CMF_NORMAL));
     if (SUCCEEDED(hr))
     {
         if (bNoVerb)
         {
             UINT iDefItem = GetMenuDefaultItem(hMenu, FALSE, 0);
-            ici.lpVerb = (iDefItem == (UINT)-1)
-                ? NULL
-                : (LPCSTR)UlongToPtr(iDefItem - 1);
+            ici.lpVerb = (iDefItem == (UINT)-1) ? NULL : (LPCSTR)UlongToPtr(iDefItem - 1);
         }
         hr = pContextMenu->InvokeCommand(&ici);
     }
@@ -581,6 +580,7 @@ BOOL GetMonitorRects(HMONITOR hMonitor, LPRECT prc, BOOL bWorkArea)
     return FALSE;
 }
 
+// Convert SHELLEXECUTEINFOW to CMINVOKECOMMANDINFOEX
 HRESULT SEI2ICIX(
     const SHELLEXECUTEINFOW *pSEI,
     CMINVOKECOMMANDINFOEX   *pICIX,
@@ -633,9 +633,7 @@ HRESULT SEI2ICIX(
         }
     }
 
-    // CMIC_MASK_UNICODE 繝輔Λ繧ｰ繧定ｨｭ螳�
-    reinterpret_cast<BYTE *>(&pICIX->fMask)[1] |= 0x40;
-
+    pICIX->fMask |= CMIC_MASK_UNICODE;
     return hr;
 }
 
@@ -699,7 +697,7 @@ BOOL _SHCreateProcess(
     }
 #endif
 
-    while (true)
+    for (;;)
     {
         BOOL  bSuccess          = FALSE;
         DWORD dwLastError       = 0;
@@ -713,45 +711,39 @@ BOOL _SHCreateProcess(
 #ifdef NO_RUNAS
             default:
 #endif
-                bSuccess = CreateProcessW(
-                    pszPath, pszCommand,
-                    lpProcessAttribute, lpThreadAttribute,
-                    bInheritHandles, dwCreationFlags,
-                    pszzEnvBlock, pszWorkDir, psi, ppi);
+                bSuccess = CreateProcessW(pszPath, pszCommand, lpProcessAttribute,
+                                          lpThreadAttribute, bInheritHandles, dwCreationFlags,
+                                          pszzEnvBlock, pszWorkDir, psi, ppi);
                 break;
 
 #ifndef NO_RUNAS
             case 1:
                 if (hUserToken)
                 {
-                    bSuccess = CreateProcessAsUserW(
-                        hUserToken,
-                        pszPath, pszCommand,
-                        lpProcessAttribute, lpThreadAttribute,
-                        bInheritHandles,
-                        dwCreationFlags | CREATE_PRESERVE_CODE_AUTHZ_LEVEL,
-                        pszzEnvBlock, pszWorkDir, psi, ppi);
+                    bSuccess = CreateProcessAsUserW(hUserToken, pszPath, pszCommand,
+                                                    lpProcessAttribute, lpThreadAttribute,
+                                                    bInheritHandles,
+                                                    (dwCreationFlags |
+                                                     CREATE_PRESERVE_CODE_AUTHZ_LEVEL),
+                                                    pszzEnvBlock, pszWorkDir, psi, ppi);
                 }
                 else
                 {
-                    bSuccess = CreateProcessW(
-                        pszPath, pszCommand,
-                        lpProcessAttribute, lpThreadAttribute,
-                        bInheritHandles,
-                        dwCreationFlags | CREATE_PRESERVE_CODE_AUTHZ_LEVEL,
-                        pszzEnvBlock, pszWorkDir, psi, ppi);
+                    bSuccess = CreateProcessW(pszPath, pszCommand, lpProcessAttribute,
+                                              lpThreadAttribute, bInheritHandles,
+                                              (dwCreationFlags |
+                                               CREATE_PRESERVE_CODE_AUTHZ_LEVEL),
+                                              pszzEnvBlock, pszWorkDir, psi, ppi);
                 }
                 break;
 
             case 2:
                 if (HANDLE hSandboxToken = _GetSandboxToken())
                 {
-                    bSuccess = CreateProcessAsUserW(
-                        hSandboxToken,
-                        pszPath, pszCommand,
-                        lpProcessAttribute, lpThreadAttribute,
-                        bInheritHandles, dwCreationFlags,
-                        pszzEnvBlock, pszWorkDir, psi, ppi);
+                    bSuccess = CreateProcessAsUserW(hSandboxToken, pszPath, pszCommand,
+                                                    lpProcessAttribute, lpThreadAttribute,
+                                                    bInheritHandles, dwCreationFlags,
+                                                    pszzEnvBlock, pszWorkDir, psi, ppi);
                     CloseHandle(hSandboxToken);
                 }
                 break;
@@ -765,10 +757,9 @@ BOOL _SHCreateProcess(
                     bInheritHandles, dwCreationFlags,
                     pszzEnvBlock, pszWorkDir, psi, ppi);
 
-                bSuccess = SUCCEEDED(hrTS);
-                dwLastError = ((hrTS & 0x1FFF0000) == FACILITY_WIN32 << 16)
-                    ? static_cast<DWORD>(HRESULT_CODE(hrTS))
-                    : ERROR_ACCESS_DENIED;
+                bSuccess    = SUCCEEDED(hrTS);
+                dwLastError = (HRESULT_FACILITY(hrTS) == FACILITY_WIN32)
+                            ? HRESULT_CODE(hrTS) : ERROR_ACCESS_DENIED;
                 break;
             }
 
@@ -794,9 +785,8 @@ BOOL _SHCreateProcess(
 
                 if (_IsLogonError(dwLastError))
                 {
-                    LoadStringW(g_hinst, 0x192Au, szBuffer, _countof(szBuffer));
+                    LoadStringW(g_hinst, 0x192A, szBuffer, _countof(szBuffer));
                     SHSysErrorMessageBox(hWnd, szDest, 4230, dwLastError, szBuffer, MB_ICONERROR);
-
 retry_logon:
                     nRunAs = _LogonUser(hWnd, nRunAs, szDest);
                     continue;
@@ -1065,28 +1055,28 @@ INT SHSysErrorMessageBox(
 PCWSTR _GetNextParm(PCWSTR pszStart, PWSTR pszDst, unsigned int cchDstMax)
 {
     if (!pszStart || *pszStart == L'\0')
-        return nullptr;
+        return NULL;
 
-    PWSTR pDstEnd = pszDst ? &pszDst[cchDstMax - 1] : nullptr;
+    PWSTR pDstEnd = pszDst ? &pszDst[cchDstMax - 1] : NULL;
 
     while (*pszStart == L' ')
         pszStart++;
 
     if (*pszStart == UNICODE_NULL)
-        return nullptr;
+        return NULL;
 
-    bool isQuoted = (*pszStart == L'"');
+    BOOL isQuoted = (*pszStart == L'"');
     if (isQuoted)
-        pszStart++; // 髢句ｧ九�� '"' 繧偵せ繧ｭ繝�プ
+        pszStart++;
 
-    while (true)
+    for (;;)
     {
         PCWSTR pNextQuote = StrChrW(pszStart, L'"');
 
         if (isQuoted)
         {
             if (!pNextQuote)
-                return nullptr;
+                return NULL;
         }
         else
         {
@@ -1101,7 +1091,7 @@ PCWSTR _GetNextParm(PCWSTR pszStart, PWSTR pszDst, unsigned int cchDstMax)
                         size_t cchCopy = pNextSpace - pszStart;
                         if ((size_t)(pDstEnd - pszDst) < cchCopy)
                         {
-                            return nullptr;
+                            return NULL;
                         }
                         StrCpyNW(pszDst, pszStart, static_cast<int>(cchCopy + 1));
                     }
@@ -1118,7 +1108,7 @@ PCWSTR _GetNextParm(PCWSTR pszStart, PWSTR pszDst, unsigned int cchDstMax)
                         StrCpyNW(pszDst, pszStart, static_cast<int>(cchCopy + 1));
                     }
                 }
-                return nullptr;
+                return NULL;
             }
         }
 
@@ -1131,7 +1121,7 @@ PCWSTR _GetNextParm(PCWSTR pszStart, PWSTR pszDst, unsigned int cchDstMax)
                 cchCopy++;
 
             if ((size_t)(pDstEnd - pszDst) < cchCopy)
-                return nullptr;
+                return NULL;
 
             StrCpyNW(pszDst, pszStart, static_cast<int>(cchCopy + 1));
             pszDst += cchCopy;
@@ -1384,15 +1374,11 @@ INT GetExeType(LPCWSTR lpFileName)
             return 0;
     }
 
-    HANDLE hFile = CreateFileW(lpFileName,
-                               GENERIC_EXECUTE | GENERIC_READ,
-                               FILE_SHARE_READ | FILE_SHARE_WRITE,
-                               NULL, OPEN_EXISTING, 0, NULL);
+    HANDLE hFile = CreateFileW(lpFileName, GENERIC_EXECUTE | GENERIC_READ,
+                               FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
     if (hFile == INVALID_HANDLE_VALUE)
     {
-        hFile = CreateFileW(lpFileName,
-                            GENERIC_READ,
-                            FILE_SHARE_READ | FILE_SHARE_WRITE,
+        hFile = CreateFileW(lpFileName, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE,
                             NULL, OPEN_EXISTING, 0, NULL);
         if (hFile == INVALID_HANDLE_VALUE)
             return 0;
@@ -1489,8 +1475,8 @@ BOOL App_IsLFNAware(LPCWSTR lpFileName)
     const WORD wVersion = HIWORD(exeType);
 
     const BOOL bLFNCapable =
-        (wSig == IMAGE_NT_SIGNATURE)  ||                       // PE (Win32)
-        (wSig == IMAGE_OS2_SIGNATURE  && wVersion >= 0x0400);  // NE (Win16) v4.00+
+        (wSig == IMAGE_NT_SIGNATURE)  ||                      // PE (Win32)
+        (wSig == IMAGE_OS2_SIGNATURE && wVersion >= 0x0400);  // NE (Win16) v4.00+
 
     if (!bLFNCapable)
         return FALSE;
@@ -1503,7 +1489,7 @@ BOOL App_IsLFNAware(LPCWSTR lpFileName)
 
 HANDLE _WaitForDDEMsg(HWND hWnd, DWORD dwMilliseconds, UINT uTerminateMsg)
 {
-    HANDLE hEvent = CreateEventW(nullptr, FALSE, FALSE, nullptr);
+    HANDLE hEvent = CreateEventW(NULL, FALSE, FALSE, NULL);
     if (!hEvent)
         return NULL;
 

@@ -9,31 +9,61 @@
 #include <lmapibuf.h>
 #include "osinfo.h"
 
+typedef NTSTATUS (NTAPI* FN_NtQueryInformationProcess)(HANDLE, PROCESSINFOCLASS, PVOID, ULONG, PULONG);
+
 static BOOL g_bGotVerInfo = FALSE;
-static OSVERSIONINFOEXA  g_verInfo     = {};
+static OSVERSIONINFOEXA  g_verInfo = {};
+static BOOL g_bOnWow64 = -1;
+static BOOL g_bApplianceServer = -1;
+static BOOL g_bGotDomainInfo = FALSE;
+static BOOL g_bMachineIsDomainMember = FALSE;
 
-static bool IsWin9x() { return g_verInfo.dwPlatformId == VER_PLATFORM_WIN32_WINDOWS; }
-static bool IsWinNT() { return g_verInfo.dwPlatformId == VER_PLATFORM_WIN32_NT;      }
-
-static bool IsVersion(DWORD major, DWORD minor = MAXDWORD)
+static inline BOOL IsWin9x()
 {
-    if (g_verInfo.dwMajorVersion != major) return false;
+    return g_verInfo.dwPlatformId == VER_PLATFORM_WIN32_WINDOWS;
+}
+
+static inline BOOL IsWinNT()
+{
+    return g_verInfo.dwPlatformId == VER_PLATFORM_WIN32_NT;
+}
+
+static inline BOOL IsVersion(DWORD major, DWORD minor = MAXDWORD)
+{
+    if (g_verInfo.dwMajorVersion != major)
+        return FALSE;
     return minor == MAXDWORD || g_verInfo.dwMinorVersion == minor;
 }
-static bool IsVersionOrLater(DWORD major, DWORD minor = 0)
+
+static inline BOOL IsVersionOrLater(DWORD major, DWORD minor = 0)
 {
-    if (g_verInfo.dwMajorVersion != major) return g_verInfo.dwMajorVersion > major;
+    if (g_verInfo.dwMajorVersion != major)
+        return g_verInfo.dwMajorVersion > major;
     return g_verInfo.dwMinorVersion >= minor;
 }
 
-static bool IsServer()   { return g_verInfo.wProductType == VER_NT_SERVER ||
-                                  g_verInfo.wProductType == VER_NT_DOMAIN_CONTROLLER; }
-static bool IsWorkstation() { return g_verInfo.wProductType == VER_NT_WORKSTATION; }
-static bool HasSuite(WORD mask) { return (g_verInfo.wSuiteMask & mask) != 0; }
+static inline BOOL IsServer()
+{
+    return g_verInfo.wProductType == VER_NT_SERVER ||
+           g_verInfo.wProductType == VER_NT_DOMAIN_CONTROLLER;
+}
 
-static bool IsTSSuiteBasic() { return (g_verInfo.wSuiteMask & 0x8000) == 0; }
+static inline BOOL IsWorkstation()
+{
+    return g_verInfo.wProductType == VER_NT_WORKSTATION;
+}
 
-static void EnsureVerInfo()
+static inline BOOL HasSuite(WORD mask)
+{
+    return (g_verInfo.wSuiteMask & mask) != 0;
+}
+
+static inline BOOL IsTSSuiteBasic()
+{
+    return (g_verInfo.wSuiteMask & 0x8000) == 0;
+}
+
+static inline void EnsureVerInfo()
 {
     if (g_bGotVerInfo)
         return;
@@ -78,9 +108,6 @@ BOOL IsWinlogonRegValueSet(HKEY hKey, LPCSTR lpSubKey1, LPCSTR lpSubKey2, LPCSTR
     return (dwData != 0);
 }
 
-BOOL g_bGotDomainInfo = FALSE;
-BOOL g_bMachineIsDomainMember = FALSE;
-
 BOOL IsMachineDomainMember(void)
 {
     if (!g_bGotDomainInfo)
@@ -116,9 +143,6 @@ BOOL IsWinlogonRegValuePresent(HKEY hKey, LPCSTR lpSubKey, LPCSTR lpValueName)
 
     return ret;
 }
-
-typedef NTSTATUS (NTAPI* FN_NtQueryInformationProcess)(HANDLE, PROCESSINFOCLASS, PVOID, ULONG, PULONG);
-BOOL g_bOnWow64 = -1;
 
 BOOL RunningOnWow64(VOID)
 {
@@ -159,8 +183,6 @@ BOOL ShouldShowServerAdminUI(VOID)
     }
     return dwValue;
 }
-
-BOOL g_bApplianceServer = -1;
 
 BOOL IsApplianceServer(VOID)
 {

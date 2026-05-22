@@ -17,8 +17,6 @@
 
 #define SEE_MASK_CLASSALL (SEE_MASK_CLASSNAME | SEE_MASK_CLASSKEY)
 
-#define ASSOCF_NONE 0
-
 enum IRET
 {
     IRET_FAILED = -1,
@@ -402,9 +400,6 @@ void CShellExecute::_SetStartup(const SHELLEXECUTEINFOW* pInfo)
     }
 
     HANDLE hMonitorOrIcon = NULL;
-#ifndef SEE_MASK_ICON
-    #define SEE_MASK_ICON 0x00000010
-#endif
     if (pInfo->fMask & (SEE_MASK_ICON | SEE_MASK_HMONITOR))
         hMonitorOrIcon = (HANDLE)pInfo->hIcon;
     else if (pInfo->hwnd)
@@ -805,7 +800,7 @@ IRET CShellExecute::_VerifyExecTrust(LPSHELLEXECUTEINFOW sei)
                                 ? m_pszTitle
                                 : m_szPath;
 
-        bool bZoneCheck = !(sei->fMask & SEE_MASK_NOZONECHECKS);
+        BOOL bZoneCheck = !(sei->fMask & SEE_MASK_NOZONECHECKS);
         if (bZoneCheck)
         {
             if (GetEnvironmentVariableW(L"SEE_MASK_NOZONECHECKS", m_szEnvEntry, _countof(m_szEnvEntry)))
@@ -1056,7 +1051,10 @@ HWND CShellExecute::_CreateHiddenDDEWindow(HWND hWnd)
 
 HWND CShellExecute::_GetConversationWindow(HWND hwnd)
 {
-    BOOL bLowMemory = SHIsLowMemoryMachine(0);
+#ifndef ILMM_IE4
+    #define ILMM_IE4 0
+#endif
+    BOOL bLowMemory = SHIsLowMemoryMachine(ILMM_IE4);
     ULONG_PTR dwResult;
     SendMessageTimeoutW(HWND_BROADCAST,
                         WM_DDE_INITIATE,

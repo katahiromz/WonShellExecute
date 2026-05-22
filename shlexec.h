@@ -36,6 +36,9 @@ extern "C" {
 #ifndef SEE_MASK_FILEANDURL
     #define SEE_MASK_FILEANDURL 0x00400000
 #endif
+#ifndef SEE_MASK_ICON
+    #define SEE_MASK_ICON 0x00000010
+#endif
 
 BOOL WINAPI WonShellExecuteExA(LPSHELLEXECUTEINFOA sei);
 BOOL WINAPI WonShellExecuteExW(LPSHELLEXECUTEINFOW sei);
