@@ -7,7 +7,7 @@
 
 void usage(void)
 {
-    puts("tests [program.exe [parameters]]");
+    puts("Usage: tests [program.exe [parameters]]");
 }
 
 std::string ArgvToCommandLineA(int argc, char **argv)
