@@ -11,9 +11,6 @@
 #include "shlexec.h"
 #include "utils.h"
 
-#ifndef OS_DOMAINMEMBER
-    #define OS_DOMAINMEMBER 28
-#endif
 #ifndef STARTF_USEMONITOR
     #define STARTF_USEMONITOR 0x400
 #endif
@@ -1443,10 +1440,7 @@ BOOL CShellExecute::_SetCommand()
         ret = TRUE;
 
     if (!m_bInheritHandles && SHRestricted(REST_INHERITCONSOLEHANDLES))
-    {
-        m_bInheritHandles = IsCurrentProcessConsole() &&
-                            IsConsoleApp(m_szWorkGroupHelper);
-    }
+        m_bInheritHandles = IsCurrentProcessConsole() && IsConsoleApp(m_szWorkGroupHelper);
 
     return ret;
 }

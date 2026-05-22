@@ -15,6 +15,7 @@ extern HINSTANCE g_hinst;
 BOOL g_bGotDisableMSI = FALSE;
 HRESULT g_hrDisableIMI = S_FALSE;
 CRITICAL_SECTION g_csDll;
+BOOL g_bCurrentProcessIsConsole = FALSE;
 #ifndef NO_ASSIST
 IUserAssist *g_uempUa = NULL;
 #endif
@@ -135,7 +136,7 @@ typedef struct tagSHPOLICY_CONSTRAINT
     DWORD dwMax;
 } SHPOLICY_CONSTRAINT, *PSHPOLICY_CONSTRAINT;
 
-HRESULT __stdcall SHPolicyGetValue(
+HRESULT SHPolicyGetValue(
     LPCWSTR pszKey1,
     LPCWSTR pszKey2,
     LPCWSTR pszValue,
@@ -144,22 +145,22 @@ HRESULT __stdcall SHPolicyGetValue(
     LPVOID pvData,
     LPDWORD pcbData)
 {
-    WCHAR pszSubKey[MAX_PATH];
+    WCHAR szSubKey[MAX_PATH];
 
-    HRESULT hr = StringCchPrintfW(pszSubKey, _countof(pszSubKey), L"%s\\%s", pszKey1, pszKey2);
+    HRESULT hr = StringCchPrintfW(szSubKey, _countof(szSubKey), L"%s\\%s", pszKey1, pszKey2);
     if (FAILED(hr))
         return hr;
 
     DWORD srrf = pConstraint->wFlags;
     DWORD cbDataSaved = pcbData ? *pcbData : 0;
 
-    LSTATUS error = SHRegGetValueW(HKEY_LOCAL_MACHINE, pszSubKey, pszValue, srrf, pdwType, pvData, pcbData);
+    LSTATUS error = SHRegGetValueW(HKEY_LOCAL_MACHINE, szSubKey, pszValue, srrf, pdwType, pvData, pcbData);
     if (error == ERROR_FILE_NOT_FOUND)
     {
         if (pcbData)
             *pcbData = cbDataSaved;
 
-        error = SHRegGetValueW(HKEY_CURRENT_USER, pszSubKey, pszValue, srrf, pdwType, pvData, pcbData);
+        error = SHRegGetValueW(HKEY_CURRENT_USER, szSubKey, pszValue, srrf, pdwType, pvData, pcbData);
     }
 
     if (error > 0)
@@ -178,10 +179,10 @@ HRESULT __stdcall SHPolicyGetValue(
 
 BOOL ProcessAllowsInvalidUrls(VOID)
 {
-    static const SHPOLICY_CONSTRAINT c_Bool = { SRRF_RT_DWORD, sizeof(DWORD), 0, 1 };
+    static const SHPOLICY_CONSTRAINT c_Bool = { SRRF_RT_DWORD, sizeof(DWORD), FALSE, TRUE };
 
     WCHAR szModule[MAX_PATH];
-    if (!GetModuleFileNameW(NULL, szModule, ARRAYSIZE(szModule)))
+    if (!GetModuleFileNameW(NULL, szModule, _countof(szModule)))
         return FALSE;
 
     LPCWSTR pszFileName = PathFindFileNameW(szModule);
@@ -202,12 +203,12 @@ BOOL ProcessAllowsInvalidUrls(VOID)
     if (FAILED(hr))
         return CheckForAppPathsBoolValue(pszFileName, L"AllowShellExecHandleCIFFailure");
 
-    return dwValue == 1;
+    return dwValue == TRUE;
 }
 
 DWORD SHGetObjectCompatFlags(IUnknown *pUnk, const CLSID *clsid)
 {
-    return 0;
+    return 0; // FIXME
 }
 
 DWORD SHGetAttributes(IShellFolder* psf, LPCITEMIDLIST pidl, DWORD dwAttributes)
@@ -646,8 +647,7 @@ BOOL _PathIsFile(LPCWSTR lpFileName)
 
 INT CheckForInstallApplication(LPCWSTR pszPath, LPCWSTR unused)
 {
-    // FIXME
-    return 0;
+    return 0; // FIXME
 }
 
 HANDLE _GetSandboxToken(VOID)
@@ -1463,8 +1463,6 @@ INT GetExeType(LPCWSTR lpFileName)
 
     return MAKELONG(headerSig, subsystem);
 }
-
-BOOL g_bCurrentProcessIsConsole = FALSE;
 
 BOOL IsCurrentProcessConsole(VOID)
 {
