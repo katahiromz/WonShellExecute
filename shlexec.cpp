@@ -1347,8 +1347,9 @@ HRESULT CShellExecute::_EvaluateTemplate(LPBOOL pbLongNameOK)
 
     StringCchCopyW(m_szRunAsCommand, _countof(m_szRunAsCommand), pszCommandLine);
 
-    _QueryString(0x40, ASSOCSTR_FRIENDLYAPPNAME, m_szFriendlyAppName, 260);
-    _QueryString(0x40, ASSOCSTR_EXECUTABLE,      m_szExecutable2,     260);
+    ASSOCF
+    _QueryString(ASSOCF_VERIFY, ASSOCSTR_FRIENDLYAPPNAME, m_szFriendlyAppName, _countof(m_szFriendlyAppName));
+    _QueryString(ASSOCF_VERIFY, ASSOCSTR_EXECUTABLE, m_szExecutable2, _countof(m_szExecutable2));
 
     CoTaskMemFree(pszApplication);
     CoTaskMemFree(pszCommandLine);
