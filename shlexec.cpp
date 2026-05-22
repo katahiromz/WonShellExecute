@@ -646,7 +646,7 @@ BOOL CShellExecute::_CheckForRegisteredProgram()
 
     if (PathFindFileNameW(m_szPath) != m_szPath ||
         !PathToAppPath(m_szPath, szPath) ||
-        !PathResolve(szPath, 0, PRF_CHECKEXISTANCE | PRF_EXECUTABLE) ||
+        !PathResolve(szPath, NULL, PRF_CHECKEXISTANCE | PRF_EXECUTABLE) ||
         PathIsDirectoryW(szPath) )
     {
         return FALSE;
@@ -1189,7 +1189,7 @@ Cleanup:
 
     if (bFlag && dwError == ERROR_FILE_NOT_FOUND)
     {
-        _QueryString(0, ASSOCSTR_DDEIFEXEC, m_szDdeCommand, _countof(m_szDdeCommand));
+        _QueryString(ASSOCF_NONE, ASSOCSTR_DDEIFEXEC, m_szDdeCommand, _countof(m_szDdeCommand));
         return IRET_0;
     }
 
@@ -1212,7 +1212,7 @@ DWORD CShellExecute::_TryWowShellExec()
     if (!_ReportHinst(hinstApp))
     {
         if (m_bDdeInfoSet)
-            _DDEExecute(0, m_hWnd, m_wShowWindow, m_bNoAsync);
+            _DDEExecute(FALSE, m_hWnd, m_wShowWindow, m_bNoAsync);
     }
 
     return ERROR_SUCCESS;
@@ -1227,7 +1227,7 @@ BOOL CShellExecute::_ExecMayCreateProcess()
         return !_ReportWin32(ERROR_UNHANDLED_ERROR);
     }
 
-    if (_TryValidateUNC(m_szExecutable2, 0, 0) <= 0)
+    if (_TryValidateUNC(m_szExecutable2, NULL, NULL) <= 0)
         return !_ReportWin32(GetLastError());
 
     if (_TryWowShellExec() > 0)
@@ -2277,7 +2277,7 @@ WonWOWShellExecute(
     g_fnWowShellExecCB = callback;
     if (!lpParameters)
         lpParameters = "";
-    result = RealShellExecuteExA(hWnd, lpVerb, lpFile, lpParameters, lpDirectory, 0, "", 0, iShowCmd, 0, 0);
+    result = RealShellExecuteExA(hWnd, lpVerb, lpFile, lpParameters, lpDirectory, NULL, "", NULL, iShowCmd, NULL, 0);
     g_fnWowShellExecCB = NULL;
     return result;
 }
