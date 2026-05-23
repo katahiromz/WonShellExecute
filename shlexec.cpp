@@ -11,6 +11,7 @@
 #include <userenv.h>
 #include "shlexec.h"
 #include "utils.h"
+#include "resource.h"
 
 #ifndef STARTF_USEMONITOR
     #define STARTF_USEMONITOR 0x400
@@ -394,7 +395,7 @@ HRESULT CEnvironmentBlock::UpdateVar(
     }
     else
     {
-        LPWSTR pchOldValueStart = pchVarStart + cchName + 1;
+        LPWSTR pchOldValueStart = pchVarStart + cchName + 1; 
 
         LPWSTR pchDest = pchOldValueStart + cchValue + 1;
         const INT cchRemaining = cchTotalBlock - (pchOldValueStart - m_pszzBlock);
@@ -2040,30 +2041,29 @@ static void _DisplayShellExecError(
 
     switch (dwError)
     {
-        case ERROR_FILE_NOT_FOUND:       nTextID = 8449; bShowMsgBox = TRUE; break;
-        case ERROR_PATH_NOT_FOUND:       nTextID = 8463; bShowMsgBox = TRUE; break;
-        case ERROR_TOO_MANY_OPEN_FILES:  nTextID = 8451; bShowMsgBox = TRUE; break;
-        case ERROR_ACCESS_DENIED:        nTextID = 8452; bShowMsgBox = TRUE; break;
+        case ERROR_FILE_NOT_FOUND:       nTextID = IDS_CANTFIND2; bShowMsgBox = TRUE; break;
+        case ERROR_PATH_NOT_FOUND:       nTextID = IDS_BADPATH2; bShowMsgBox = TRUE; break;
+        case ERROR_TOO_MANY_OPEN_FILES:  nTextID = IDS_TOOMANYFILES; bShowMsgBox = TRUE; break;
+        case ERROR_ACCESS_DENIED:        nTextID = IDS_BADPATH1; bShowMsgBox = TRUE; break;
         case ERROR_NOT_ENOUGH_MEMORY:    // fall-through
-        case ERROR_OUTOFMEMORY:          nTextID = 8448; bShowMsgBox = TRUE; break;
-        case ERROR_BAD_FORMAT:           nTextID = 8461; bShowMsgBox = TRUE; break;
-        case ERROR_SHARING_VIOLATION:    nTextID = 8457; bShowMsgBox = TRUE; break;
+        case ERROR_OUTOFMEMORY:          nTextID = IDS_NOMEMORY; bShowMsgBox = TRUE; break;
+        case ERROR_BAD_FORMAT:           nTextID = IDS_BADFORMAT; bShowMsgBox = TRUE; break;
+        case ERROR_SHARING_VIOLATION:    nTextID = IDS_FILELOCKED; bShowMsgBox = TRUE; break;
         case ERROR_BAD_NET_NAME:         // fall-through
-        case ERROR_SEM_TIMEOUT:          nTextID = 6211; bShowMsgBox = TRUE; break;
-        case ERROR_OLD_WIN_VERSION:      nTextID = 8453; bShowMsgBox = TRUE; break;
-        case ERROR_APP_WRONG_OS:         nTextID = 8454; bShowMsgBox = TRUE; break;
-        case ERROR_SINGLE_INSTANCE_APP:  nTextID = 8455; bShowMsgBox = TRUE; break;
-        case ERROR_RMODE_APP:            nTextID = 8462; bShowMsgBox = TRUE; break;
-        case ERROR_BAD_PATHNAME:         nTextID = 8463; bShowMsgBox = TRUE; break;
-        case ERROR_INVALID_DLL:          nTextID = 8456; bShowMsgBox = TRUE; break;
-        case ERROR_NO_ASSOCIATION:       nTextID = 8460; bShowMsgBox = TRUE; break;
-        case ERROR_DDE_FAIL:             nTextID = 8459; bShowMsgBox = TRUE; break;
-
+        case ERROR_SEM_TIMEOUT:          nTextID = IDS_CANTFIND1; bShowMsgBox = TRUE; break;
+        case ERROR_OLD_WIN_VERSION:      nTextID = IDS_OLDOS; bShowMsgBox = TRUE; break;
+        case ERROR_APP_WRONG_OS:         nTextID = IDS_BADPROGRAM; bShowMsgBox = TRUE; break;
+        case ERROR_SINGLE_INSTANCE_APP:  nTextID = IDS_ONEPROGRAMONLY; bShowMsgBox = TRUE; break;
+        case ERROR_RMODE_APP:            nTextID = IDS_CANTRUN; bShowMsgBox = TRUE; break;
+        case ERROR_BAD_PATHNAME:         nTextID = IDS_BADPATH2; bShowMsgBox = TRUE; break;
+        case ERROR_INVALID_DLL:          nTextID = IDS_BADLIBRARY; bShowMsgBox = TRUE; break;
+        case ERROR_NO_ASSOCIATION:       nTextID = IDS_BADASSOC; bShowMsgBox = TRUE; break;
+        case ERROR_DDE_FAIL:             nTextID = IDS_BADSENDING; bShowMsgBox = TRUE; break;
         case 0xFFFFFFFF:
-            nTextID = 9729;
+            nTextID = IDS_CANCELBYREST;
             if (!pszCaption)
             {
-                nTitleID = 9728;
+                nTitleID = IDS_RESTRICTION;
                 pszTitle = NULL;
             }
             bShowMsgBox = TRUE;
@@ -2072,7 +2072,7 @@ static void _DisplayShellExecError(
         default:
         {
             if (dwError)
-                SHSysErrorMessageBox(hWnd, pszTitle, 4230, dwError, pszText, 16);
+                SHSysErrorMessageBox(hWnd, pszTitle, IDS_TWOARGS, dwError, pszText, MB_ICONERROR);
             break;
         }
     }

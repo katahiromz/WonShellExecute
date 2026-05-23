@@ -4,6 +4,7 @@
 //////////////////////////////////////////////////////////////////////////////
 // Generated from TEXTINCLUDE 1
 
+#include "resource.h"
 
 //////////////////////////////////////////////////////////////////////////////
 // Generated from TEXTINCLUDE 2
@@ -27,25 +28,27 @@ LANGUAGE LANG_ENGLISH, SUBLANG_DEFAULT
 
 STRINGTABLE
 {
-    4228, "\tFile system error (%d)."
-    4230, "%2!ls!\n\n%1!ls!"
-    4231, "%1!ls!"
-    6211, "Windows cannot find '%1!ls!'. Check the spelling and try again, or try searching for the item by clicking the Start button and then clicking Search."
-    8448, "There is not enough free memory to run this program. Quit one or more programs, and then try again."
-    8449, "Windows cannot find '%1!ls!'. Make sure you typed the name correctly, and then try again. To search for a file, click the Start button, and then click Search."
-    8451, "Too many other files are currently in use by 16-bit programs. Quit one or more 16-bit programs, or increase the value of the FILES command in your Config.sys file."
-    8452, "Windows cannot access the specified device, path, or file.  You may not have the appropriate permissions to access the item."
-    8453, "This program requires a newer version of Windows."
-    8454, "The specified program was not designed to work with Windows or MS-DOS."
-    8455, "Windows cannot start more than one copy of this program."
-    8456, "One of the library files needed to run this program is damaged. To repair the damage, reinstall this program."
-    8457, "Another program is currently using this file."
-    8459, "There was a problem sending the command to the program."
-    8460, "This file does not have a program associated with it for performing this action. Create an association in the Folder Options control panel."
-    8461, "Windows cannot run this program because it is not in a valid format."
-    8462, "Windows cannot run this program. Please contact your vendor for a later version."
-    8463, "%1!ls!\nThe specified path does not exist.\n\nCheck the path, and then try again."
-    9728, "Restrictions"
+    IDS_FILESYSTEMERROR, "\tFile system error (%d)."
+    IDS_TWOARGS, "%2!ls!\n\n%1!ls!"
+    IDS_ONEARG, "%1!ls!"
+    IDS_CANTFIND1, "Windows cannot find '%1!ls!'. Check the spelling and try again, or try searching for the item by clicking the Start button and then clicking Search."
+    IDS_CANTLOGON, "Unable to log on:"
+    IDS_NOMEMORY, "There is not enough free memory to run this program. Quit one or more programs, and then try again."
+    IDS_CANTFIND2, "Windows cannot find '%1!ls!'. Make sure you typed the name correctly, and then try again. To search for a file, click the Start button, and then click Search."
+    IDS_TOOMANYFILES, "Too many other files are currently in use by 16-bit programs. Quit one or more 16-bit programs, or increase the value of the FILES command in your Config.sys file."
+    IDS_BADPATH1, "Windows cannot access the specified device, path, or file.  You may not have the appropriate permissions to access the item."
+    IDS_OLDOS, "This program requires a newer version of Windows."
+    IDS_BADPROGRAM, "The specified program was not designed to work with Windows or MS-DOS."
+    IDS_ONEPROGRAMONLY, "Windows cannot start more than one copy of this program."
+    IDS_BADLIBRARY, "One of the library files needed to run this program is damaged. To repair the damage, reinstall this program."
+    IDS_FILELOCKED, "Another program is currently using this file."
+    IDS_BADSENDING, "There was a problem sending the command to the program."
+    IDS_BADASSOC, "This file does not have a program associated with it for performing this action. Create an association in the Folder Options control panel."
+    IDS_BADFORMAT, "Windows cannot run this program because it is not in a valid format."
+    IDS_CANTRUN, "Windows cannot run this program. Please contact your vendor for a later version."
+    IDS_BADPATH2, "%1!ls!\nThe specified path does not exist.\n\nCheck the path, and then try again."
+    IDS_RESTRICTION, "Restrictions"
+    IDS_CANCELBYREST, "This operation has been cancelled due to restrictions in effect on this computer. Please contact your system administrator."
 }
 
 //////////////////////////////////////////////////////////////////////////////

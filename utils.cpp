@@ -11,6 +11,7 @@
 #include <winsafer.h>
 #include "shlexec.h"
 #include "utils.h"
+#include "resource.h"
 
 extern "C" {
 
@@ -810,8 +811,8 @@ BOOL _SHCreateProcess(
 
                 if (_IsLogonError(dwLastError))
                 {
-                    LoadStringW(g_hinst, 0x192A, szBuffer, _countof(szBuffer));
-                    SHSysErrorMessageBox(hWnd, szDest, 4230, dwLastError, szBuffer, MB_ICONERROR);
+                    LoadStringW(g_hinst, 6442, szBuffer, _countof(szBuffer));
+                    SHSysErrorMessageBox(hWnd, szDest, IDS_TWOARGS, dwLastError, szBuffer, MB_ICONERROR);
 retry_logon:
                     nRunAs = _LogonUser(hWnd, nRunAs, szDest);
                     continue;
@@ -1068,11 +1069,11 @@ INT SHSysErrorMessageBox(
         ? _VarArgsFormatMessage(szBuffer, _countof(szBuffer), ERROR_MR_MID_NOT_FOUND, L"", pszSearch)
         : _VarArgsFormatMessage(szBuffer, _countof(szBuffer), dwMessageId, pszSearch, L"", L"", L"", L"", L"");
 
-    if (!bFormatted && !_LoadErrMsg(4228, szBuffer, _countof(szBuffer), dwMessageId))
+    if (!bFormatted && !_LoadErrMsg(IDS_FILESYSTEMERROR, szBuffer, _countof(szBuffer), dwMessageId))
         return IDCANCEL;
 
-    if (nTextID == 4230 && (!pszSearch || StrStrW(szBuffer, pszSearch)))
-        nTextID = 4231;
+    if (nTextID == IDS_TWOARGS && (!pszSearch || StrStrW(szBuffer, pszSearch)))
+        nTextID = IDS_ONEARG;
 
     return WonShellMessageBoxWrapW(g_hinst, hWnd, MAKEINTRESOURCEW(nTextID), pszTitle, uType, szBuffer);
 }
