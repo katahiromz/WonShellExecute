@@ -371,7 +371,49 @@ HRESULT CEnvironmentBlock::UpdateVar(
 // Sets an environment variable to the specified value in the block.
 HRESULT CEnvironmentBlock::SetVar(LPCWSTR pszName, LPCWSTR pszValue)
 {
-    return E_NOTIMPL;
+    const INT cchName     = lstrlenW(pszName);
+    const INT cchNewValue = lstrlenW(pszValue);
+    const INT cchTotalRequired = cchName + cchNewValue + 2;
+
+    HRESULT hr = _InitBlock(cchTotalRequired);
+    if (FAILED(hr))
+        return hr;
+
+    LPWSTR pchStart = nullptr;
+
+    if (_FindVar(pszName, cchName, &pchStart))
+    {
+        LPWSTR pchOldValue = StrChrW(pchStart, L'=') + 1;
+        const INT cchOldValue = lstrlenW(pchOldValue);
+
+        LPWSTR pchNextVarDest = &pchOldValue[cchNewValue + 1];
+        LPWSTR pchNextVarSrc  = &pchOldValue[cchOldValue + 1];
+        
+        const INT cchTotalBlock = _BlockLenCached();
+        const INT cchRemaining  = cchTotalBlock - (pchNextVarSrc - m_pszzBlock);
+        MoveMemory(pchNextVarDest, pchNextVarSrc, cchRemaining * sizeof(WCHAR));
+
+        StrCpyW(pchOldValue, pszValue);
+
+        m_cchBlock += (cchNewValue - cchOldValue);
+    }
+    else
+    {
+        const INT cchTotalBlock = _BlockLenCached();
+        const INT cchRemaining  = cchTotalBlock - (pchStart - this->m_pszzBlock);
+        MoveMemory(&pchStart[cchTotalRequired], pchStart, cchRemaining * sizeof(WCHAR));
+
+        StrCpyW(pchStart, pszName);
+
+        LPWSTR pchEqual = &pchStart[cchName];
+        *pchEqual = L'=';
+
+        StrCpyW(pchEqual + 1, pszValue);
+
+        m_cchBlock += cchTotalRequired;
+    }
+
+    return S_OK;
 }
 
 // Builds the process creation flags from the given shell execute mask flags.
