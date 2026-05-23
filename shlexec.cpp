@@ -8,13 +8,16 @@
 #include <shlwapi.h>
 #include <strsafe.h>
 #include <appmgmt.h>
+#include <userenv.h>
 #include "shlexec.h"
 #include "utils.h"
 
 #ifndef STARTF_USEMONITOR
     #define STARTF_USEMONITOR 0x400
 #endif
-
+#ifndef ASSOCF_NONE
+    #define ASSOCF_NONE 0
+#endif
 #define SEE_MASK_CLASSALL (SEE_MASK_CLASSNAME | SEE_MASK_CLASSKEY)
 
 enum IRET
@@ -234,51 +237,125 @@ static const ERROR_INST_PAIR g_ErrorInstPairs[] =
 EXTERN_C HINSTANCE g_hinst = GetModuleHandleW(NULL);
 
 EXTERN_C GUID POLID_PreXPSP2ShellProtocolBehavior;
-    
+
 WOWSHELLEXECHOOKPROC g_fnWowShellExecCB = NULL;
 
-// Executes a shell command for WOW (16-bit compatibility) with a hook callback.
-HINSTANCE __stdcall WOWShellExecute(
-    HWND hwnd,
-    LPCSTR lpOperation,
-    LPCSTR lpFile,
-    LPCSTR lpParameters,
-    LPCSTR lpDirectory,
-    WORD nShowCmd,
-    WOWSHELLEXECHOOKPROC callback)
+static LPWSTR GetEnvBlock(HANDLE hToken)
 {
-    HINSTANCE result;
+    if (!hToken)
+        return GetEnvironmentStringsW();
 
-    g_fnWowShellExecCB = callback;
-    if (!lpParameters)
-        lpParameters = "";
-    result = RealShellExecuteExA(hwnd, lpOperation, lpFile, lpParameters, lpDirectory, NULL, "", NULL, nShowCmd, NULL, 0);
-    g_fnWowShellExecCB = NULL;
-    return result;
+    LPVOID Environment = NULL;
+    CreateEnvironmentBlock(&Environment, hToken, TRUE);
+    return (LPWSTR)Environment;
+}
+
+static VOID FreeEnvBlock(HANDLE hUserToken, LPWSTR pEnv)
+{
+    if (!pEnv)
+        return;
+
+    if (hUserToken)
+        DestroyEnvironmentBlock(pEnv);
+    else
+        FreeEnvironmentStringsW(pEnv);
 }
 
 // Initializes the environment variable block with the given character count capacity.
 HRESULT CEnvironmentBlock::_InitBlock(INT cchBlock)
 {
-    return E_NOTIMPL;
+    const INT cchRequired = cchBlock + _BlockLenCached();
+    if (cchRequired <= m_cchAlloc)
+        return S_OK;
+
+    const DWORD cchNewAlloc = ((m_cchAlloc + cchBlock + 265) >> 8) << 8; // Align to 256
+
+    if (m_pszzBlock)
+    {
+        SIZE_T cbNewAlloc = cchNewAlloc * sizeof(WCHAR);
+        LPWSTR pszNewText = (LPWSTR)LocalReAlloc(m_pszzBlock, cbNewAlloc, LMEM_MOVEABLE);
+        if (pszNewText)
+        {
+            m_cchAlloc  = cchNewAlloc - 10;
+            m_pszzBlock = pszNewText;
+        }
+    }
+    else
+    {
+        LPWSTR pEnvBlock = GetEnvBlock(m_hUserToken);
+        if (pEnvBlock)
+        {
+            const INT cchOldBlock = _BlockLen(pEnvBlock);
+            const DWORD cchInitAlloc = ((cchOldBlock + cchBlock + 265) >> 8) << 8;
+
+            LPWSTR pszNewBlock = (LPWSTR)LocalAlloc(LPTR, cchInitAlloc * sizeof(WCHAR));
+            m_pszzBlock = pszNewBlock;
+
+            if (pszNewBlock)
+            {
+                CopyMemory(pszNewBlock, pEnvBlock, cchOldBlock * sizeof(WCHAR));
+                m_cchAlloc = cchInitAlloc - 10;
+                m_cchBlock = cchOldBlock;
+            }
+
+            FreeEnvBlock(m_hUserToken, pEnvBlock);
+        }
+    }
+
+    if (m_cchAlloc < cchRequired)
+        return E_OUTOFMEMORY;
+
+    return S_OK;
 }
 
 // Searches the environment block for a variable by name and returns a pointer to it.
 BOOL CEnvironmentBlock::_FindVar(PCNZWCH pszName, INT cchName, LPWSTR *ppch)
 {
-    return FALSE;
+    LPWSTR pch = this->m_pszzBlock;
+    INT iComp = CSTR_LESS_THAN; // 初期値 = 1 (元コードの 1)
+
+    if (*pch)
+    {
+        while (iComp == CSTR_LESS_THAN)
+        {
+            iComp = CompareStringW(LOCALE_SYSTEM_DEFAULT, NORM_IGNORECASE, pch, cchName, pszName, cchName);
+
+            *ppch = pch;
+
+            pch += lstrlenW(pch) + 1;
+
+            if (!*pch)
+            {
+                if (iComp == CSTR_LESS_THAN)
+                    *ppch = pch;
+
+                break;
+            }
+        }
+    }
+    else
+    {
+        *ppch = pch;
+    }
+
+    return (iComp == CSTR_EQUAL);
 }
 
 // Returns the cached total length of the environment block in characters.
 INT CEnvironmentBlock::_BlockLenCached()
 {
-    return 0;
+    if (!m_cchBlock && m_pszzBlock)
+        m_cchBlock = _BlockLen(m_pszzBlock);
+    return m_cchBlock;
 }
 
 // Calculates the total length of the environment block starting from the given pointer.
 INT CEnvironmentBlock::_BlockLen(LPCWSTR pchStart)
 {
-    return 0;
+    LPCWSTR pch;
+    for (pch = pchStart; *pch; pch += lstrlenW(pch) + 1)
+        ;
+    return pch - pchStart + 1;
 }
 
 // Updates an environment variable in the block, optionally appending or prepending the value with a separator.
@@ -1461,7 +1538,7 @@ IRET CShellExecute::_ShouldRetryWithNewClassKey(BOOL bParse)
 {
     if (m_bAlreadyQueriedClassStore ||
         m_bNoQueryClassStore ||
-        FAILED(m_pQueryAssoc->GetData(NULL, ASSOCDATA_UNUSED1, NULL, NULL, NULL)))
+        FAILED(m_pQueryAssoc->GetData(NULL, (ASSOCDATA)3, NULL, NULL, NULL)))
     {
         return IRET_2;
     }
@@ -2239,6 +2316,26 @@ WonWOWShellExecute(
     if (!lpParameters)
         lpParameters = "";
     result = RealShellExecuteExA(hWnd, lpVerb, lpFile, lpParameters, lpDirectory, NULL, "", NULL, iShowCmd, NULL, 0);
+    g_fnWowShellExecCB = NULL;
+    return result;
+}
+
+// Executes a shell command for WOW (16-bit compatibility) with a hook callback.
+HINSTANCE WINAPI WOWShellExecute(
+    HWND hwnd,
+    LPCSTR lpOperation,
+    LPCSTR lpFile,
+    LPCSTR lpParameters,
+    LPCSTR lpDirectory,
+    WORD nShowCmd,
+    WOWSHELLEXECHOOKPROC callback)
+{
+    HINSTANCE result;
+
+    g_fnWowShellExecCB = callback;
+    if (!lpParameters)
+        lpParameters = "";
+    result = RealShellExecuteExA(hwnd, lpOperation, lpFile, lpParameters, lpDirectory, NULL, "", NULL, nShowCmd, NULL, 0);
     g_fnWowShellExecCB = NULL;
     return result;
 }
