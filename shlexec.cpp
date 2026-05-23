@@ -1350,6 +1350,7 @@ DWORD CShellExecute::_TryWowShellExec()
 // Checks restrictions and UNC validity, then attempts WOW execution before allowing normal process creation.
 BOOL CShellExecute::_ExecMayCreateProcess()
 {
+    TRACE("\n");
     if (SHRestricted(REST_RESTRICTRUN) && RestrictedApp(m_szExecutable2) ||
         SHRestricted(REST_DISALLOWRUN) && DisallowedApp(m_szExecutable2))
     {
@@ -1495,6 +1496,7 @@ HRESULT CShellExecute::_EvaluateTemplate(LPBOOL pbLongNameOK)
 // Builds the final command-line string by expanding the run-as template and substituting file and parameter tokens.
 BOOL CShellExecute::_SetCommand()
 {
+    TRACE("\n");
     LPWSTR szRunAsCommand = m_szRunAsCommand;
     HINSTANCE hInstError = NULL;
     DWORD dwAssocBufLen;
@@ -1582,6 +1584,7 @@ BOOL CShellExecute::_SetCommand()
 // Builds the command line and environment, then spawns the target process via _SHCreateProcess.
 void CShellExecute::_DoExecCommand()
 {
+    TRACE("\n");
     HWND hwndFore = ::GetForegroundWindow();
 
     if (!_SetCommand() || !_ExecMayCreateProcess())
