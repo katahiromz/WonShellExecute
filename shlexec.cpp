@@ -459,7 +459,7 @@ HRESULT CEnvironmentBlock::SetVar(LPCWSTR pszName, LPCWSTR pszValue)
     return S_OK;
 }
 
-void CShellExecute::~CShellExecute()
+CShellExecute::~CShellExecute()
 {
   DWORD CurrentProcessId; // eax
 
