@@ -814,7 +814,7 @@ BOOL CShellExecute::_Resolve(LPITEMIDLIST *ppidl)
     }
 
     DWORD cchOut = _countof(m_szPath);
-    if (!UrlApplySchemeW(m_szPath, m_szPath, &cchOut, URL_APPLY_GUESSSCHEME))
+    if (UrlApplySchemeW(m_szPath, m_szPath, &cchOut, URL_APPLY_GUESSSCHEME) == S_OK)
     {
         m_bIsURL = TRUE;
         return TRUE;
@@ -829,7 +829,7 @@ BOOL CShellExecute::_ShellExecPidl(LPSHELLEXECUTEINFOW sei, LPCITEMIDLIST pidl)
 {
     IContextMenu *pContextMenu = NULL;
     HRESULT hr = SHGetUIObjectFromFullPIDL(pidl, sei->hwnd,
-                                           IID_PPV_ARGS(&pContextMenu));
+                                           IID_IContextMenu, (PVOID*)&pContextMenu);
     if (SUCCEEDED(hr))
     {
         hr = _InvokeInProcExec(pContextMenu, sei);
@@ -877,7 +877,7 @@ IRET CShellExecute::_TryExecPidl(LPSHELLEXECUTEINFOW sei, LPITEMIDLIST pidl)
     {
         if (pidl || m_bNoResolve || _Resolve(&pidl))
         {
-            if ((!m_pszVerb && !m_bNoExecPidl) ||
+            if (((!m_pszVerb || !lstrcmpiW(m_pszVerb, L"open")) && !m_bNoExecPidl) ||
                 m_bIsURL || m_bInvokeIDList || m_bIsNamespaceObject || (m_attrs & SFGAO_LINK) ||
                 (!pidl && PathIsShortcut(m_szPath, INVALID_FILE_ATTRIBUTES)))
             {

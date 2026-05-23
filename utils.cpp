@@ -776,7 +776,7 @@ HRESULT _InvokeInProcExec(IContextMenu *pContextMenu, LPSHELLEXECUTEINFOW sei)
     if (!hMenu)
         return hr;
 
-    CMINVOKECOMMANDINFO ici = {};
+    CMINVOKECOMMANDINFOEX ici = {};
     HLOCAL hLocal;
     if (FAILED(SEI2ICIX(sei, (CMINVOKECOMMANDINFOEX*)&ici, &hLocal)))
     {
@@ -796,7 +796,7 @@ HRESULT _InvokeInProcExec(IContextMenu *pContextMenu, LPSHELLEXECUTEINFOW sei)
             UINT iDefItem = GetMenuDefaultItem(hMenu, FALSE, 0);
             ici.lpVerb = (iDefItem == (UINT)-1) ? NULL : (LPCSTR)UlongToPtr(iDefItem - 1);
         }
-        hr = pContextMenu->InvokeCommand(&ici);
+        hr = pContextMenu->InvokeCommand((CMINVOKECOMMANDINFO*)&ici);
     }
 
     if (hLocal)
