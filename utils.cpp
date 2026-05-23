@@ -1068,13 +1068,13 @@ INT SHSysErrorMessageBox(
         ? _VarArgsFormatMessage(szBuffer, _countof(szBuffer), ERROR_MR_MID_NOT_FOUND, L"", pszSearch)
         : _VarArgsFormatMessage(szBuffer, _countof(szBuffer), dwMessageId, pszSearch, L"", L"", L"", L"", L"");
 
-    if (!bFormatted && !_LoadErrMsg(0x1084, szBuffer, _countof(szBuffer), dwMessageId))
+    if (!bFormatted && !_LoadErrMsg(4228, szBuffer, _countof(szBuffer), dwMessageId))
         return IDCANCEL;
 
     if (nTextID == 4230 && (!pszSearch || StrStrW(szBuffer, pszSearch)))
         nTextID = 4231;
 
-    return ShellMessageBoxW(g_hinst, hWnd, MAKEINTRESOURCEW(nTextID), pszTitle, uType);
+    return WonShellMessageBoxWrapW(g_hinst, hWnd, MAKEINTRESOURCEW(nTextID), pszTitle, uType, szBuffer);
 }
 
 PCWSTR _GetNextParm(PCWSTR pszStart, PWSTR pszDst, unsigned int cchDstMax)
@@ -1903,5 +1903,55 @@ HRESULT WonSHEvaluateSystemCommandTemplate(LPCWSTR pszCommand, LPWSTR *ppszAppli
 {
     return E_NOTIMPL; // FIXME
 }
-    
+
+INT WINAPIV WonShellMessageBoxWrapW(HINSTANCE hInstance, HWND hWnd, LPCWSTR lpText,
+                                    LPCWSTR lpCaption, UINT uType, ...)
+{
+    WCHAR *szText = NULL, szTitle[100];
+    LPCWSTR pszText, pszTitle = szTitle;
+    LPWSTR pszTemp;
+    va_list args;
+    int ret;
+
+    va_start(args, uType);
+
+    if (IS_INTRESOURCE(lpCaption))
+        LoadStringW(hInstance, LOWORD(lpCaption), szTitle, _countof(szTitle));
+    else
+        pszTitle = lpCaption;
+
+    if (IS_INTRESOURCE(lpText))
+    {
+        const WCHAR *ptr;
+        UINT len = LoadStringW(hInstance, LOWORD(lpText), (LPWSTR)&ptr, 0);
+
+        if (len)
+        {
+            szText = (LPWSTR)HeapAlloc(GetProcessHeap(), 0, (len + 1) * sizeof(WCHAR));
+            if (szText) LoadStringW(hInstance, LOWORD(lpText), szText, len + 1);
+        }
+        pszText = szText;
+        if (!pszText) {
+            va_end(args);
+            return 0;
+        }
+    }
+    else
+        pszText = lpText;
+
+    FormatMessageW(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_STRING,
+                   pszText, 0, 0, (LPWSTR)&pszTemp, 0, &args);
+
+    va_end(args);
+
+#ifdef __REACTOS__
+    uType |= MB_SETFOREGROUND;
+#endif
+    ret = MessageBoxW(hWnd, pszTemp, pszTitle, uType);
+
+    HeapFree(GetProcessHeap(), 0, szText);
+    LocalFree(pszTemp);
+    return ret;
+}
+
 } // extern "C"

@@ -420,6 +420,8 @@ extern "C" {
 
     HRESULT WonSHEvaluateSystemCommandTemplate(LPCWSTR pszCommand, LPWSTR *ppszApplication, LPWSTR *ppszCommandLine, LPWSTR *ppszUnknown);
 
+    INT WINAPIV WonShellMessageBoxWrapW(HINSTANCE hInstance, HWND hWnd, LPCWSTR lpText, LPCWSTR lpCaption, UINT uType, ...);
+
 #ifdef __cplusplus
 } // extern "C"
 #endif

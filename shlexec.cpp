@@ -394,7 +394,7 @@ HRESULT CEnvironmentBlock::UpdateVar(
     }
     else
     {
-        LPWSTR pchOldValueStart = pchVarStart + cchName + 1; 
+        LPWSTR pchOldValueStart = pchVarStart + cchName + 1;
 
         LPWSTR pchDest = pchOldValueStart + cchValue + 1;
         const INT cchRemaining = cchTotalBlock - (pchOldValueStart - m_pszzBlock);
@@ -2026,7 +2026,8 @@ static void _DisplayShellExecError(
 {
     BOOL bShowMsgBox = FALSE;
     PCWSTR pszTitle = pszCaption ? pszCaption : pszText;
-    INT nTextID;
+    INT nTextID = 0;
+    INT nTitleID = 0;
 
     if ((fMask & SEE_MASK_FLAG_NO_UI) || dwError == ERROR_CANCELLED)
     {
@@ -2057,10 +2058,14 @@ static void _DisplayShellExecError(
         case ERROR_INVALID_DLL:          nTextID = 8456; bShowMsgBox = TRUE; break;
         case ERROR_NO_ASSOCIATION:       nTextID = 8460; bShowMsgBox = TRUE; break;
         case ERROR_DDE_FAIL:             nTextID = 8459; bShowMsgBox = TRUE; break;
+
         case 0xFFFFFFFF:
             nTextID = 9729;
             if (!pszCaption)
-                pszTitle = MAKEINTRESOURCEW(9728);
+            {
+                nTitleID = 9728;
+                pszTitle = NULL;
+            }
             bShowMsgBox = TRUE;
             break;
 
@@ -2077,7 +2082,10 @@ static void _DisplayShellExecError(
         UINT uType = MB_ICONERROR;
         if (nTextID == 8448)
             uType |= MB_SYSTEMMODAL;
-        ShellMessageBoxW(g_hinst, hWnd, MAKEINTRESOURCEW(nTextID), pszTitle, uType);
+
+        LPCWSTR lpFinalTitle = (nTitleID != 0) ? MAKEINTRESOURCEW(nTitleID) : pszTitle;
+
+        WonShellMessageBoxWrapW(g_hinst, hWnd, MAKEINTRESOURCEW(nTextID), lpFinalTitle, uType);
     }
 
     SetLastError(dwError);
