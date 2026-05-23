@@ -770,33 +770,31 @@ HRESULT SHGetUIObjectFromFullPIDL(
 
 HRESULT _InvokeInProcExec(IContextMenu *pContextMenu, LPSHELLEXECUTEINFOW sei)
 {
-    HRESULT hr = E_OUTOFMEMORY;
-
     HMENU hMenu = CreatePopupMenu();
     if (!hMenu)
-        return hr;
+        return E_OUTOFMEMORY;
 
-    CMINVOKECOMMANDINFOEX ici = {};
+    CMINVOKECOMMANDINFOEX icix = {};
     HLOCAL hLocal;
-    if (FAILED(SEI2ICIX(sei, (CMINVOKECOMMANDINFOEX*)&ici, &hLocal)))
+    if (FAILED(SEI2ICIX(sei, &icix, &hLocal)))
     {
         DestroyMenu(hMenu);
-        return hr;
+        return E_OUTOFMEMORY;
     }
 
-    const BOOL bNoVerb = !ici.lpVerb || !*ici.lpVerb;
-    ici.fMask |= CMIC_MASK_FLAG_NO_UI;
+    const BOOL bNoVerb = !icix.lpVerb || !*icix.lpVerb;
+    icix.fMask |= CMIC_MASK_FLAG_NO_UI;
 
-    hr = pContextMenu->QueryContextMenu(hMenu, 0, 1, 0x7FFF,
-                                        (bNoVerb ? CMF_DEFAULTONLY : CMF_NORMAL));
+    HRESULT hr = pContextMenu->QueryContextMenu(hMenu, 0, 1, 0x7FFF,
+                                                (bNoVerb ? CMF_DEFAULTONLY : CMF_NORMAL));
     if (SUCCEEDED(hr))
     {
         if (bNoVerb)
         {
             UINT iDefItem = GetMenuDefaultItem(hMenu, FALSE, 0);
-            ici.lpVerb = (iDefItem == (UINT)-1) ? NULL : (LPCSTR)UlongToPtr(iDefItem - 1);
+            icix.lpVerb = (iDefItem == (UINT)-1) ? NULL : (LPCSTR)UlongToPtr(iDefItem - 1);
         }
-        hr = pContextMenu->InvokeCommand((CMINVOKECOMMANDINFO*)&ici);
+        hr = pContextMenu->InvokeCommand((CMINVOKECOMMANDINFO*)&icix);
     }
 
     if (hLocal)
