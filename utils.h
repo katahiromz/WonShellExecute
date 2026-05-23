@@ -418,6 +418,8 @@ extern "C" {
         PVOID* ppv,
         LPCITEMIDLIST *ppidlLast);
 
+    HRESULT WonSHEvaluateSystemCommandTemplate(LPCWSTR pszCommand, LPWSTR *ppszApplication, LPWSTR *ppszCommandLine, LPWSTR *ppszUnknown);
+
 #ifdef __cplusplus
 } // extern "C"
 #endif

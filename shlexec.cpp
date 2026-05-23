@@ -1460,8 +1460,7 @@ HRESULT CShellExecute::_EvaluateTemplate(LPBOOL pbLongNameOK)
     }
 
     PWSTR pszApplication = NULL, pszCommandLine = NULL;
-    HRESULT hr = SHEvaluateSystemCommandTemplate(
-        m_szRunAsCommand, &pszApplication, &pszCommandLine, NULL);
+    HRESULT hr = WonSHEvaluateSystemCommandTemplate(m_szRunAsCommand, &pszApplication, &pszCommandLine, NULL);
     if (FAILED(hr))
         return hr;
 

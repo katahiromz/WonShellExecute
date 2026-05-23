@@ -1899,4 +1899,9 @@ HRESULT WonSHBindToFolderIDListParent(
     return hr;
 }
 
+HRESULT WonSHEvaluateSystemCommandTemplate(LPCWSTR pszCommand, LPWSTR *ppszApplication, LPWSTR *ppszCommandLine, LPWSTR *ppszUnknown)
+{
+    return E_NOTIMPL; // FIXME
+}
+    
 } // extern "C"
