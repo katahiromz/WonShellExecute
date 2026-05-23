@@ -400,7 +400,7 @@ HRESULT CEnvironmentBlock::UpdateVar(
     }
     else
     {
-        LPWSTR pchOldValueStart = pchVarStart + cchName + 1; 
+        LPWSTR pchOldValueStart = pchVarStart + cchName + 1;
 
         LPWSTR pchDest = pchOldValueStart + cchValue + 1;
         const INT cchRemaining = cchTotalBlock - (pchOldValueStart - m_pszzBlock);
@@ -909,7 +909,8 @@ IRET CShellExecute::_TryExecPidl(LPSHELLEXECUTEINFOW sei, LPITEMIDLIST pidl)
 // Verifies the execution trust level of the given path using Safer/Software Restriction Policies.
 IRET CShellExecute::_VerifySaferTrust(LPCWSTR szFullPathname)
 {
-    return IRET_0; // FIXME
+    TRACE("FIXME\n");
+    return IRET_0;
 }
 
 // Performs a security zone check on the file path and returns the appropriate IRET based on the zone policy.
