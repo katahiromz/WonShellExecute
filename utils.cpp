@@ -1079,7 +1079,7 @@ INT SHSysErrorMessageBox(
 
 PCWSTR _GetNextParm(PCWSTR pszStart, PWSTR pszDst, unsigned int cchDstMax)
 {
-    if (!pszStart || *pszStart == L'\0')
+    if (!pszStart || !*pszStart)
         return NULL;
 
     PWSTR pDstEnd = pszDst ? &pszDst[cchDstMax - 1] : NULL;
@@ -1087,7 +1087,7 @@ PCWSTR _GetNextParm(PCWSTR pszStart, PWSTR pszDst, unsigned int cchDstMax)
     while (*pszStart == L' ')
         pszStart++;
 
-    if (*pszStart == UNICODE_NULL)
+    if (!*pszStart)
         return NULL;
 
     BOOL isQuoted = (*pszStart == L'"');

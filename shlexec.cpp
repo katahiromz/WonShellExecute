@@ -1101,7 +1101,7 @@ HGLOBAL CShellExecute::_CreateDDECommand(INT nCmdShow, BOOL bLongNameOK, BOOL bU
         bLongNameOK,
         m_lpIDList,
         &m_hDdeData);
-    if (expandResult != 0)
+    if (expandResult)
         return NULL;
 
     if (bUnicode)
