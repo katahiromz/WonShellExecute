@@ -18,9 +18,6 @@ std::string ArgvToCommandLineA(int argc, char **argv)
     for (int iarg = 0; iarg < argc; ++iarg) {
         std::string arg = argv[iarg];
 
-        if (iarg != 0)
-            cmdline += ' ';
-
         bool needQuote = arg.empty() || arg.find_first_of(" \t\n\v\"") != std::string::npos;
 
         if (needQuote)
@@ -37,6 +34,7 @@ std::string ArgvToCommandLineA(int argc, char **argv)
                 cmdline.append(bs * (needQuote ? 2 : 1), '\\');
                 break;
             }
+
             if (arg[j] == '"') {
                 cmdline.append(bs * 2 + 1, '\\');
                 cmdline += '"';
@@ -49,6 +47,8 @@ std::string ArgvToCommandLineA(int argc, char **argv)
 
         if (needQuote)
             cmdline += '"';
+        if (iarg + 1 < argc) 
+            cmdline += ' ';
     }
 
     return cmdline;
