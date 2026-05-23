@@ -82,8 +82,8 @@ struct CShellExecute
     LPITEMIDLIST m_lpIDList;
     DWORD m_attrs;
     LPITEMIDLIST m_pidlParsed;
-    WORD m_wDdeAppAtom;
-    WORD m_wDdeTopicAtom;
+    ATOM m_wDdeAppAtom;
+    ATOM m_wDdeTopicAtom;
     HANDLE m_hDdeData;
     IQueryAssociations *m_pQueryAssoc;
     HWND m_hWnd;
@@ -119,6 +119,7 @@ struct CShellExecute
         ZeroMemory(this, sizeof(*this));
         m_cRefs = 1;
     }
+    ~CShellExecute();
 
     void ExecuteNormal(LPSHELLEXECUTEINFOW sei);
     DWORD Finalize(LPSHELLEXECUTEINFOW sei);
@@ -456,6 +457,36 @@ HRESULT CEnvironmentBlock::SetVar(LPCWSTR pszName, LPCWSTR pszValue)
     }
 
     return S_OK;
+}
+
+void CShellExecute::~CShellExecute()
+{
+  DWORD CurrentProcessId; // eax
+
+    if (m_hHandle1)
+        CloseHandle(m_hHandle1);
+    if (m_dwError && m_hDdeData)
+    {
+        DWORD dwPID = GetCurrentProcessId();
+        SHFreeShared(m_hDdeData, dwPID);
+    }
+    if (m_wDdeTopicAtom)
+        GlobalDeleteAtom(m_wDdeTopicAtom);
+    if (m_wDdeAppAtom)
+        GlobalDeleteAtom(m_wDdeAppAtom);
+    if (m_pQueryAssoc)
+        m_pQueryAssoc->Release();
+    if (m_pi.hProcess)
+        CloseHandle(m_pi.hProcess);
+    if (m_pi.hThread)
+        CloseHandle(m_pi.hThread);
+    if (m_hParameters)
+        LocalFree(m_hParameters);
+    if (m_hTitle)
+        LocalFree(m_hTitle);
+    ILFree(m_pidlParsed);
+    if (m_EnvBlock.m_pszzBlock)
+        LocalFree(m_EnvBlock.m_pszzBlock);
 }
 
 // Builds the process creation flags from the given shell execute mask flags.
