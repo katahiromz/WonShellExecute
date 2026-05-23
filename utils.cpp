@@ -28,9 +28,219 @@ IUserAssist *g_uempUa = NULL;
 
 DEFINE_GUID(SCID_DESCRIPTIONID_GUID,       0x28636AA6, 0x953D, 0x11D2, 0x00B5, 0xD6, 0x00, 0xC0, 0x4F, 0xD9, 0x18, 0xD0);
 DEFINE_GUID(GUID_NULL, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
-DEFINE_GUID(POLID_PreXPSP2ShellProtocolBehavior, 0x4FC60822, 0x47AF, 0x4BEE, 0xA7, 0xDA, 0xC9, 0x9A, 0x6E, 0x8E, 0x5D, 0x8D);
+DEFINE_GUID(POLID_PreXPSP2ShellProtocolBehavior,    0x4FC60822, 0x47AF, 0x4BEE, 0xA7, 0xDA, 0xC9, 0x9A, 0x6E, 0x8E, 0x5D, 0x8D);
+DEFINE_GUID(POLID_UsePathEnvVarForCommandTemplates, 0x1FF8F603, 0x056A, 0x4F52, 0x89, 0xCC, 0x82, 0xAD, 0x1C, 0xA1, 0xC1, 0x9A);
 
 static SHCOLUMNID SCID_DESCRIPTIONID = { SCID_DESCRIPTIONID_GUID, 2 };
+
+static HRESULT _CopyExe(
+    PWSTR pszDest,
+    UINT cchDest,
+    const WCHAR* pszSrc,
+    UINT cchSrc)
+{
+    *pszDest = UNICODE_NULL;
+
+    HRESULT hr = StringCchCatNW(pszDest, cchDest, pszSrc, cchSrc);
+    if (SUCCEEDED(hr))
+    {
+        StrTrimW(pszDest, L" \t");
+    }
+    return hr;
+}
+
+static BOOL PathIsAbsolute(LPCWSTR pszPath)
+{
+    if (!pszPath) return FALSE;
+
+    return PathIsUNCW(pszPath) || 
+           (PathGetDriveNumberW(pszPath) != -1 && lstrlenW(pszPath) > 2 && pszPath[2] == L'\\');
+}
+
+static BOOL _PathAppend(LPCWSTR pszBase, LPCWSTR pszSrc, PWSTR pszDest, size_t cchDest)
+{
+    if (SUCCEEDED(StringCchCopyW(pszDest, cchDest, pszBase)) && 
+        SUCCEEDED(StringCchCatW(pszDest, cchDest, L"\\")))
+    {
+        return SUCCEEDED(StringCchCatW(pszDest, cchDest, pszSrc));
+    }
+    return FALSE;
+}
+
+void _MakeAppPathKey(LPCWSTR pszPath, PWSTR pszDest, unsigned int cchDest)
+{
+    static const WCHAR szAppPathsKey[] = L"Software\\Microsoft\\Windows\\CurrentVersion\\App Paths";
+
+    if (_PathAppend(szAppPathsKey, pszPath, pszDest, cchDest))
+    {
+        LPCWSTR pszExt = PathFindExtensionW(pszPath);
+        if (pszExt && !*pszExt)
+        {
+            StrCatBuffW(pszDest, L".exe", cchDest);
+        }
+    }
+}
+
+BOOL _GetAppPath(LPCWSTR pszPath, PWSTR pvData, unsigned int cchData)
+{
+    WCHAR pszSubKey[MAX_PATH] = {};
+    _MakeAppPathKey(pszPath, pszSubKey, _countof(pszSubKey));
+    DWORD cbData = cchData * sizeof(WCHAR);
+    return SHGetValueW(HKEY_LOCAL_MACHINE, pszSubKey, NULL, NULL, pvData, &cbData) == ERROR_SUCCESS;
+}
+
+#define WHICH_PIF       (1 << 0)
+#define WHICH_COM       (1 << 1)
+#define WHICH_EXE       (1 << 2)
+#define WHICH_BAT       (1 << 3)
+#define WHICH_LNK       (1 << 4)
+#define WHICH_CMD       (1 << 5)
+#define WHICH_OPTIONAL  (1 << 6)
+
+#define WHICH_DEFAULT   (WHICH_PIF | WHICH_COM | WHICH_EXE | WHICH_BAT | WHICH_LNK | WHICH_CMD)
+
+BOOL WINAPI PathFileExistsDefExtW(LPWSTR lpszPath,DWORD dwWhich)
+{
+  static const WCHAR pszExts[][5]  = { { '.', 'p', 'i', 'f', 0},
+                                       { '.', 'c', 'o', 'm', 0},
+                                       { '.', 'e', 'x', 'e', 0},
+                                       { '.', 'b', 'a', 't', 0},
+                                       { '.', 'l', 'n', 'k', 0},
+                                       { '.', 'c', 'm', 'd', 0},
+                                       { 0, 0, 0, 0, 0} };
+
+  if (!lpszPath || PathIsUNCServerW(lpszPath) || PathIsUNCServerShareW(lpszPath))
+    return FALSE;
+
+  if (dwWhich)
+  {
+    LPCWSTR szExt = PathFindExtensionW(lpszPath);
+    if (!*szExt || dwWhich & WHICH_OPTIONAL)
+    {
+      size_t iChoose = 0;
+      int iLen = lstrlenW(lpszPath);
+      if (iLen > (MAX_PATH - 5))
+        return FALSE;
+      while (pszExts[iChoose][0])
+      {
+        if (dwWhich & 0x1)
+        {
+        if (GetFileAttributes(lpszPath) != FILE_ATTRIBUTE_DIRECTORY)
+        lstrcpyW(lpszPath + iLen, pszExts[iChoose]);
+        if (PathFileExistsW(lpszPath))
+          return TRUE;
+        }
+        iChoose++;
+        dwWhich >>= 1;
+      }
+      *(lpszPath + iLen) = (WCHAR)'\0';
+      return FALSE;
+    }
+  }
+  return PathFileExistsW(lpszPath);
+}
+
+BOOL WINAPI PathFileExistsAndAttributesW(LPCWSTR lpszPath, DWORD *dwAttr)
+{
+  UINT iPrevErrMode;
+  DWORD dwVal;
+
+  if (!lpszPath)
+    return FALSE;
+
+  iPrevErrMode = SetErrorMode(SEM_FAILCRITICALERRORS);
+  dwVal = GetFileAttributesW(lpszPath);
+  SetErrorMode(iPrevErrMode);
+  if (dwAttr)
+    *dwAttr = dwVal;
+  return (dwVal != INVALID_FILE_ATTRIBUTES);
+}
+
+BOOL WINAPI
+PathFileExistsDefExtAndAttributesW(
+    _Inout_ LPWSTR pszPath,
+    _In_ DWORD dwWhich,
+    _Out_opt_ LPDWORD pdwFileAttributes)
+{
+    if (pdwFileAttributes)
+        *pdwFileAttributes = INVALID_FILE_ATTRIBUTES;
+
+    if (!pszPath)
+        return FALSE;
+
+    if (!dwWhich || (*PathFindExtensionW(pszPath) && (dwWhich & WHICH_OPTIONAL)))
+        return PathFileExistsAndAttributesW(pszPath, pdwFileAttributes);
+
+    if (!PathFileExistsDefExtW(pszPath, dwWhich))
+    {
+        if (pdwFileAttributes)
+            *pdwFileAttributes = INVALID_FILE_ATTRIBUTES;
+        return FALSE;
+    }
+
+    if (pdwFileAttributes)
+        *pdwFileAttributes = GetFileAttributesW(pszPath);
+
+    return TRUE;
+}
+
+HRESULT _PathExeExists(LPWSTR pszPath)
+{
+    DWORD dwWhich = WHICH_PIF | WHICH_COM | WHICH_EXE | WHICH_BAT | WHICH_CMD | WHICH_OPTIONAL;
+    if (!PathFileExistsDefExtAndAttributesW(pszPath, WHICH_OPTIONAL, &dwWhich))
+        return CO_E_APPNOTFOUND;
+
+    return S_OK;
+}
+
+HRESULT __stdcall _PathFindInFolder(int csidl, STRSAFE_LPCWSTR pszSrc, LPWSTR pszPath, size_t cchDest)
+{
+    HRESULT result; // eax
+
+    result = SHGetFolderPathW(0, csidl, 0, 0, pszPath);
+    if (result >= 0)
+    {
+        StringCchCatW(pszPath, cchDest, L"\\");
+        result = StringCchCatW(pszPath, cchDest, pszSrc);
+        if (result >= 0)
+            return _PathExeExists(pszPath);
+    }
+    return result;
+}
+
+HRESULT _PathFindInSystem(PWSTR pszSrc, unsigned int cchSrc)
+{
+    WCHAR pszPath[MAX_PATH];
+    HRESULT hr;
+
+    hr = _PathFindInFolder(CSIDL_SYSTEM, pszSrc, pszPath, _countof(pszPath));
+    if (SUCCEEDED(hr))
+        return StringCchCopyW(pszSrc, cchSrc, pszPath);
+
+    hr = _PathFindInFolder(CSIDL_SYSTEMX86, pszSrc, pszPath, _countof(pszPath));
+    if (SUCCEEDED(hr))
+        return StringCchCopyW(pszSrc, cchSrc, pszPath);
+
+    return hr;
+}
+
+BOOL _PathMatchesSuspicious(LPCWSTR lpString)
+{
+    WCHAR pszPath[MAX_PATH] = {};
+    INT cchString = lstrlenW(lpString);
+
+    if (SUCCEEDED(SHGetFolderPathW(NULL, CSIDL_PROGRAM_FILES_COMMON, NULL, 0, pszPath)))
+        return StrCmpNIW(lpString, pszPath, cchString) == 0;
+
+    return FALSE;
+}
+
+HRESULT SHCoAlloc(SIZE_T cb, PVOID* pp)
+{
+    if (!pp) return E_POINTER;
+    *pp = CoTaskMemAlloc(cb);
+    return (*pp != NULL) ? S_OK : E_OUTOFMEMORY;
+}
 
 BOOL InRunDllProcess(VOID)
 {
@@ -490,9 +700,19 @@ BOOL UEMIsLoaded(void)
     return GetModuleHandleW(L"ole32.dll") && GetModuleHandleW(L"browseui.dll");
 }
 
-HRESULT SHWindowsPolicyGetValue(REFGUID rguid, PVOID pvValue, PDWORD pcbValue)
+typedef HRESULT(WINAPI *FN_SHWindowsPolicyGetValue)(REFGUID, PVOID, PDWORD);
+
+HRESULT
+SHWindowsPolicyGetValue(
+    _In_ REFGUID rpolid,
+    _Out_opt_ PVOID pvData,
+    _Out_opt_ PDWORD pcbData)
 {
-    return E_FAIL;
+    HINSTANCE hSHLWAPI = GetModuleHandleA("shlwapi");
+    FARPROC fn = GetProcAddress(hSHLWAPI, MAKEINTRESOURCEA(560));
+    FN_SHWindowsPolicyGetValue pSHWindowsPolicyGetValue;
+    CopyMemory(&pSHWindowsPolicyGetValue, &fn, sizeof(fn));
+    return pSHWindowsPolicyGetValue(rpolid, pvData, pcbData);
 }
 
 INT SHWindowsPolicy(REFGUID rguid, INT nDefault)
@@ -1903,9 +2123,312 @@ HRESULT WonSHBindToFolderIDListParent(
     return hr;
 }
 
-HRESULT WonSHEvaluateSystemCommandTemplate(LPCWSTR pszCommand, LPWSTR *ppszApplication, LPWSTR *ppszCommandLine, LPWSTR *ppszUnknown)
+PWSTR _PathGetArgsLikeCreateProcess(LPCWSTR lpString)
 {
-    return E_NOTIMPL; // FIXME
+    PWSTR pch;
+    if (*lpString == '"')
+        pch = StrChrW(lpString + 1, '"');
+    else
+        pch = StrChrW(lpString, ' ');
+    if (pch)
+        return pch + 1;
+    else
+        return (PWSTR)&lpString[lstrlenW(lpString)];
+}
+
+static BOOL SHLWAPI_PathFindInOtherDirs(LPWSTR lpszFile, DWORD dwWhich)
+{
+  static const WCHAR szSystem[] = { 'S','y','s','t','e','m','\0'};
+  static const WCHAR szPath[] = { 'P','A','T','H','\0'};
+  DWORD dwLenPATH;
+  LPCWSTR lpszCurr;
+  WCHAR *lpszPATH;
+  WCHAR buff[MAX_PATH];
+
+  /* Try system directories */
+  GetSystemDirectoryW(buff, MAX_PATH);
+  if (!PathAppendW(buff, lpszFile))
+     return FALSE;
+  if (PathFileExistsDefExtW(buff, dwWhich))
+  {
+    lstrcpyW(lpszFile, buff);
+    return TRUE;
+  }
+  GetWindowsDirectoryW(buff, MAX_PATH);
+  if (!PathAppendW(buff, szSystem ) || !PathAppendW(buff, lpszFile))
+    return FALSE;
+  if (PathFileExistsDefExtW(buff, dwWhich))
+  {
+    lstrcpyW(lpszFile, buff);
+    return TRUE;
+  }
+  GetWindowsDirectoryW(buff, MAX_PATH);
+  if (!PathAppendW(buff, lpszFile))
+    return FALSE;
+  if (PathFileExistsDefExtW(buff, dwWhich))
+  {
+    lstrcpyW(lpszFile, buff);
+    return TRUE;
+  }
+  /* Try dirs listed in %PATH% */
+  dwLenPATH = GetEnvironmentVariableW(szPath, buff, MAX_PATH);
+
+  if (!dwLenPATH || !(lpszPATH = (LPWSTR)HeapAlloc(GetProcessHeap(), 0, (dwLenPATH + 1) * sizeof (WCHAR))))
+    return FALSE;
+
+  GetEnvironmentVariableW(szPath, lpszPATH, dwLenPATH + 1);
+  lpszCurr = lpszPATH;
+  while (lpszCurr)
+  {
+    LPCWSTR lpszEnd = lpszCurr;
+    LPWSTR pBuff = buff;
+
+    while (*lpszEnd == ' ')
+      lpszEnd++;
+    while (*lpszEnd && *lpszEnd != ';')
+      *pBuff++ = *lpszEnd++;
+    *pBuff = '\0';
+
+    if (*lpszEnd)
+      lpszCurr = lpszEnd + 1;
+    else
+      lpszCurr = NULL; /* Last Path, terminate after this */
+
+    if (!PathAppendW(buff, lpszFile))
+    {
+      HeapFree(GetProcessHeap(), 0, lpszPATH);
+      return FALSE;
+    }
+    if (PathFileExistsDefExtW(buff, dwWhich))
+    {
+      lstrcpyW(lpszFile, buff);
+      HeapFree(GetProcessHeap(), 0, lpszPATH);
+      return TRUE;
+    }
+  }
+  HeapFree(GetProcessHeap(), 0, lpszPATH);
+  return FALSE;
+}
+
+BOOL WINAPI PathFindOnPathExW(LPWSTR lpszFile, LPCWSTR *lppszOtherDirs, DWORD dwWhich)
+{
+    WCHAR buff[MAX_PATH];
+
+    if (!lpszFile || !PathIsFileSpecW(lpszFile))
+        return FALSE;
+
+    /* Search provided directories first */
+    if (lppszOtherDirs && *lppszOtherDirs)
+    {
+        LPCWSTR *lpszOtherPath = lppszOtherDirs;
+        while (lpszOtherPath && *lpszOtherPath && (*lpszOtherPath)[0])
+        {
+            PathCombineW(buff, *lpszOtherPath, lpszFile);
+            if (PathFileExistsDefExtW(buff, dwWhich))
+            {
+                lstrcpyW(lpszFile, buff);
+                return TRUE;
+            }
+            lpszOtherPath++;
+        }
+    }
+    /* Not found, try system and path dirs */
+    return SHLWAPI_PathFindInOtherDirs(lpszFile, dwWhich);
+}
+
+typedef BOOL (WINAPI *FN_PathIsValidCharW)(WCHAR, DWORD);
+
+static BOOL WINAPI PathIsValidCharW(WCHAR c, DWORD cls)
+{
+    HINSTANCE hSHLWAPI = GetModuleHandleA("shlwapi");
+    FARPROC fn = GetProcAddress(hSHLWAPI,  MAKEINTRESOURCEA(456));
+    FN_PathIsValidCharW pPathIsValidCharW;
+    CopyMemory(&pPathIsValidCharW, &fn, sizeof(fn));
+    return pPathIsValidCharW(c, cls);
+}
+
+static LPCWSTR _PathGuessNextBestArgs(LPCWSTR pszPath)
+{
+    LPCWSTR pFirstSpace = NULL;
+    BOOL bValid = TRUE;
+
+    LPCWSTR p = pszPath;
+    while (*p && bValid)
+    {
+        switch (*p)
+        {
+        case L' ':
+            if (!pFirstSpace)
+                pFirstSpace = p;
+            break;
+
+        case L'"':
+        case L'%':
+            bValid = false;
+            break;
+
+        case L'\\':
+            if (PathIsUNCW(p))
+                bValid = false;
+            else
+                pFirstSpace = NULL;
+            break;
+
+        default:
+            bValid = PathIsValidCharW(*p, 0x1E4);
+            break;
+        }
+
+        ++p;
+    }
+
+    if (pFirstSpace)
+    {
+        while (*pFirstSpace == L' ')
+            ++pFirstSpace;
+        return pFirstSpace;
+    }
+
+    return bValid ? p : NULL;
+}
+
+HRESULT WonSHEvaluateSystemCommandTemplate(
+    PCWSTR pszCmdTemplate,
+    PWSTR* ppszApplication,
+    PWSTR* ppszCommandLine,
+    PWSTR* ppszParameters)
+{
+    HRESULT hr = S_OK;
+    WCHAR szPath[MAX_PATH] = {};
+    LPCWSTR pszArgs = _PathGetArgsLikeCreateProcess(pszCmdTemplate);
+
+    PWSTR pszExePart = szPath;
+    
+    hr = _CopyExe(szPath, _countof(szPath), pszCmdTemplate, static_cast<UINT>(pszArgs - pszCmdTemplate));
+    if (FAILED(hr)) goto Cleanup;
+
+    const BOOL fWasQuoted = (szPath[0] == L'"');
+    if (fWasQuoted)
+    {
+        PathUnquoteSpacesW(szPath);
+    }
+
+    if (!PathIsAbsolute(szPath))
+    {
+        if (!PathIsFileSpecW(szPath))
+        {
+            hr = E_FAIL;
+            goto Cleanup;
+        }
+
+        if (_GetAppPath(szPath, szPath, _countof(szPath)))
+        {
+            hr = _PathExeExists(szPath);
+        }
+        else
+        {
+            if (SHWindowsPolicy(POLID_UsePathEnvVarForCommandTemplates, 0))
+            {
+                hr = PathFindOnPathExW(szPath, NULL, WHICH_DEFAULT)
+                     ? S_OK
+                     : HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND);
+
+                pszExePart = PathFindFileNameW(szPath);
+                goto Cleanup;
+            }
+            else
+            {
+                hr = _PathFindInSystem(szPath, _countof(szPath));
+            }
+        }
+
+        pszExePart = PathFindFileNameW(szPath);
+        goto Cleanup;
+    }
+
+    if (!fWasQuoted && _PathMatchesSuspicious(szPath))
+    {
+        hr = E_FAIL;
+        goto TryNextToken;
+    }
+
+    hr = _PathExeExists(szPath);
+
+    if (FAILED(hr) && !fWasQuoted)
+    {
+        while (true)
+        {
+        TryNextToken:
+            if (!*pszArgs) goto Cleanup;
+
+            LPCWSTR pszNextArgs = _PathGuessNextBestArgs(pszArgs);
+            pszArgs = pszNextArgs;
+            if (!pszNextArgs)
+            {
+                hr = CO_E_APPNOTFOUND;
+                goto NotFound;
+            }
+
+            hr = _CopyExe(szPath, _countof(szPath), pszCmdTemplate, static_cast<UINT>(pszNextArgs - pszCmdTemplate));
+            if (SUCCEEDED(hr)) break;
+
+            if (!pszArgs) goto Cleanup;
+        }
+
+        hr = _PathExeExists(szPath);
+
+    NotFound:
+        if (FAILED(hr))
+        {
+            if (!pszArgs) goto Cleanup;
+            goto TryNextToken;
+        }
+    }
+
+Cleanup:
+    *ppszApplication = NULL;
+    if (ppszCommandLine) *ppszCommandLine = NULL;
+    if (ppszParameters)  *ppszParameters = NULL;
+
+    if (FAILED(hr)) return hr;
+
+    if (!pszArgs) pszArgs = L"";
+
+    hr = SHStrDupW(szPath, ppszApplication);
+    if (FAILED(hr)) goto FreeOnError;
+
+    if (ppszCommandLine)
+    {
+        UINT cchNeeded = static_cast<UINT>(lstrlenW(pszExePart)) + 
+                         static_cast<UINT>(lstrlenW(pszArgs)) + 8;
+
+        hr = SHCoAlloc(sizeof(WCHAR) * cchNeeded, reinterpret_cast<PVOID*>(ppszCommandLine));
+        if (FAILED(hr)) goto FreeOnError;
+
+        hr = StringCchPrintfW(*ppszCommandLine, cchNeeded, L"\"%s\" %s", pszExePart, pszArgs);
+        if (FAILED(hr)) goto FreeOnError;
+    }
+
+    if (ppszParameters)
+    {
+        hr = SHStrDupW(pszArgs, ppszParameters);
+        if (FAILED(hr)) goto FreeOnError;
+    }
+
+    return hr;
+
+FreeOnError:
+    if (*ppszApplication)
+    {
+        CoTaskMemFree(*ppszApplication);
+        *ppszApplication = NULL;
+    }
+    if (ppszCommandLine && *ppszCommandLine)
+    {
+        CoTaskMemFree(*ppszCommandLine);
+        *ppszCommandLine = NULL;
+    }
+    return hr;
 }
 
 INT WINAPIV WonShellMessageBoxWrapW(HINSTANCE hInstance, HWND hWnd, LPCWSTR lpText,
@@ -1948,9 +2471,7 @@ INT WINAPIV WonShellMessageBoxWrapW(HINSTANCE hInstance, HWND hWnd, LPCWSTR lpTe
 
     va_end(args);
 
-#ifdef __REACTOS__
     uType |= MB_SETFOREGROUND;
-#endif
     ret = MessageBoxW(hWnd, pszTemp, pszTitle, uType);
 
     HeapFree(GetProcessHeap(), 0, szText);

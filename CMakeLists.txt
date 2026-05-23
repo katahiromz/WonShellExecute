@@ -10,6 +10,9 @@ enable_testing()
 # project name, version, and languages
 project(WonShellExecute VERSION 0.0 LANGUAGES CXX RC)
 
+# support unicode
+add_definitions(-DUNICODE -D_UNICODE)
+
 # libshlexec.a
 add_library(shlexec STATIC shlexec.cpp utils.cpp osinfo.cpp)
 
