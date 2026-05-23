@@ -71,7 +71,7 @@ WonShellExecuteA(
 
 typedef HINSTANCE (CALLBACK *WOWSHELLEXECHOOKPROC)(LPCSTR pszCommand, INT nCmdShow, LPCSTR pszWorkDir);
 
-EXTERN_C HINSTANCE WINAPI
+HINSTANCE WINAPI
 WonWOWShellExecute(
     HWND hWnd,
     LPCSTR lpVerb,
@@ -80,6 +80,34 @@ WonWOWShellExecute(
     LPCSTR lpDirectory,
     INT iShowCmd,
     WOWSHELLEXECHOOKPROC callback);
+
+HINSTANCE WINAPI
+RealShellExecuteExA(
+    _In_opt_ HWND hwnd,
+    _In_opt_ LPCSTR lpOperation,
+    _In_opt_ LPCSTR lpFile,
+    _In_opt_ LPCSTR lpParameters,
+    _In_opt_ LPCSTR lpDirectory,
+    _In_opt_ LPSTR lpReturn,
+    _In_opt_ LPCSTR lpTitle,
+    _In_opt_ LPVOID lpReserved,
+    _In_ INT nCmdShow,
+    _Out_opt_ PHANDLE lphProcess,
+    _In_ DWORD dwFlags);
+
+HINSTANCE WINAPI
+RealShellExecuteExW(
+    _In_opt_ HWND hwnd,
+    _In_opt_ LPCWSTR lpOperation,
+    _In_opt_ LPCWSTR lpFile,
+    _In_opt_ LPCWSTR lpParameters,
+    _In_opt_ LPCWSTR lpDirectory,
+    _In_opt_ LPWSTR lpReturn,
+    _In_opt_ LPCWSTR lpTitle,
+    _In_opt_ LPVOID lpReserved,
+    _In_ INT nCmdShow,
+    _Out_opt_ PHANDLE lphProcess,
+    _In_ DWORD dwFlags);
 
 #ifdef __cplusplus
 } // extern "C"

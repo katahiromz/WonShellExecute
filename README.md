@@ -22,7 +22,7 @@ WonShellExecuteA(
     LPCSTR lpDirectory,
     INT iShowCmd);
 
-typedef HINSTANCE (CALLBACK *FN_WOWSHELLEXECCB)(LPCSTR pszCommand, INT nCmdShow, LPCSTR pszWorkDir);
+typedef HINSTANCE (CALLBACK *WOWSHELLEXECHOOKPROC)(LPCSTR pszCommand, INT nCmdShow, LPCSTR pszWorkDir);
 
 EXTERN_C HINSTANCE WINAPI
 WonWOWShellExecute(
@@ -32,7 +32,7 @@ WonWOWShellExecute(
     LPCSTR lpParameters,
     LPCSTR lpDirectory,
     INT iShowCmd,
-    FN_WOWSHELLEXECCB callback);
+    WOWSHELLEXECHOOKPROC callback);
 ```
 
 License: MIT

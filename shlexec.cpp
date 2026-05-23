@@ -237,62 +237,7 @@ EXTERN_C GUID POLID_PreXPSP2ShellProtocolBehavior;
     
 WOWSHELLEXECHOOKPROC g_fnWowShellExecCB = NULL;
 
-HINSTANCE WINAPI RealShellExecuteExA(
-    HWND    hwnd,
-    LPCSTR  lpOperation,
-    LPCSTR  lpFile,
-    LPCSTR  lpParameters,
-    LPCSTR  lpDirectory,
-    LPSTR   lpReturn,
-    LPCSTR  lpTitle,
-    LPVOID  lpReserved,
-    WORD    nShowCmd,
-    HANDLE* lphProcess,
-    BYTE    dwFlags)
-{
-    SHELLEXECUTEINFOA sei   = {};
-    sei.cbSize              = sizeof(sei);
-    sei.fMask               = SEE_MASK_FLAG_NO_UI | SEE_MASK_UNKNOWN_0x1000;
-    sei.hwnd                = hwnd;
-    sei.lpVerb              = lpOperation;
-    sei.lpFile              = lpFile;
-    sei.lpParameters        = lpParameters;
-    sei.lpDirectory         = lpDirectory;
-    sei.nShow               = nShowCmd;
-
-    if (lpReserved)
-    {
-        sei.fMask |= SEE_MASK_FLAG_SEPVDM;
-        sei.hInstApp = (HINSTANCE)lpReserved;
-    }
-
-    if (lpTitle)
-    {
-        sei.fMask |= SEE_MASK_HASTITLE;
-        sei.lpClass  = lpTitle;
-    }
-
-    if (dwFlags & 0x01)
-        sei.fMask |= 0x00020000;
-
-    if (dwFlags & 0x02)
-        sei.fMask |= SEE_MASK_NO_CONSOLE;
-
-    if (lphProcess)
-    {
-        sei.fMask |= SEE_MASK_NOCLOSEPROCESS;
-        ShellExecuteExA(&sei);
-        *lphProcess = sei.hProcess;
-    }
-    else
-    {
-        ShellExecuteExA(&sei);
-    }
-
-    return sei.hInstApp;
-}
-
-// @implemented
+// Executes a shell command for WOW (16-bit compatibility) with a hook callback.
 HINSTANCE __stdcall WOWShellExecute(
     HWND hwnd,
     LPCSTR lpOperation,
@@ -312,26 +257,31 @@ HINSTANCE __stdcall WOWShellExecute(
     return result;
 }
 
+// Initializes the environment variable block with the given character count capacity.
 HRESULT CEnvironmentBlock::_InitBlock(INT cchBlock)
 {
     return E_NOTIMPL;
 }
 
+// Searches the environment block for a variable by name and returns a pointer to it.
 BOOL CEnvironmentBlock::_FindVar(PCNZWCH pszName, INT cchName, LPWSTR *ppch)
 {
     return FALSE;
 }
 
+// Returns the cached total length of the environment block in characters.
 INT CEnvironmentBlock::_BlockLenCached()
 {
     return 0;
 }
 
+// Calculates the total length of the environment block starting from the given pointer.
 INT CEnvironmentBlock::_BlockLen(LPCWSTR pchStart)
 {
     return 0;
 }
 
+// Updates an environment variable in the block, optionally appending or prepending the value with a separator.
 HRESULT CEnvironmentBlock::UpdateVar(
     LPCWSTR pszName,
     WCHAR chSep,
@@ -341,12 +291,13 @@ HRESULT CEnvironmentBlock::UpdateVar(
     return E_NOTIMPL;
 }
 
+// Sets an environment variable to the specified value in the block.
 HRESULT CEnvironmentBlock::SetVar(LPCWSTR pszName, LPCWSTR pszValue)
 {
     return E_NOTIMPL;
 }
 
-// @implemented
+// Builds the process creation flags from the given shell execute mask flags.
 DWORD CShellExecute::_GetCreateFlags(DWORD fMask)
 {
     DWORD ret = CREATE_DEFAULT_ERROR_MODE | CREATE_UNICODE_ENVIRONMENT;
@@ -357,7 +308,7 @@ DWORD CShellExecute::_GetCreateFlags(DWORD fMask)
     return ret;
 }
 
-// @implemented
+// Parses the SEE_MASK flags and sets the corresponding member variables for the execution context.
 void CShellExecute::_SetMask(DWORD fMask)
 {
     m_bSubst              = (fMask & SEE_MASK_DOENVSUBST);
@@ -380,7 +331,7 @@ void CShellExecute::_SetMask(DWORD fMask)
                                 SEE_MASK_UNKNOWN_0x1000 | 0x400000));
 }
 
-// @implemented
+// Populates the STARTUPINFOW structure from the shell execute info.
 void CShellExecute::_SetStartup(const SHELLEXECUTEINFOW* pInfo)
 {
     m_si.cb = sizeof(STARTUPINFOW);
@@ -413,7 +364,7 @@ void CShellExecute::_SetStartup(const SHELLEXECUTEINFOW* pInfo)
     }
 }
 
-// @implemented
+// Initializes the CShellExecute object from the provided SHELLEXECUTEINFOW.
 void CShellExecute::_Init(LPSHELLEXECUTEINFOW sei)
 {
     _SetMask(sei->fMask);
@@ -445,7 +396,7 @@ void CShellExecute::_Init(LPSHELLEXECUTEINFOW sei)
     _SetStartup(sei);
 }
 
-// @implemented
+// Resolves and validates the working directory.
 void CShellExecute::_SetWorkingDir(LPCWSTR lpDirectory)
 {
     INT iDrive;
@@ -480,7 +431,7 @@ VALIDATE:
         GetWindowsDirectoryW(m_szWorkDir, _countof(m_szWorkDir));
 }
 
-// @implemented
+// Sets the target file path, detects whether it is a URL, and optionally captures a trailing URL from the buffer.
 void CShellExecute::_SetFile(LPCWSTR lpFile, BOOL bURLIsTrailing)
 {
     if (lpFile && *lpFile)
@@ -514,18 +465,20 @@ void CShellExecute::_SetFile(LPCWSTR lpFile, BOOL bURLIsTrailing)
     PathUnquoteSpacesW(m_szPath);
 }
 
-// @implemented
+// Stores a Win32 error code and returns TRUE if the error is non-zero.
 BOOL CShellExecute::_ReportWin32(DWORD dwError)
 {
     m_dwError = dwError;
     return dwError != ERROR_SUCCESS;
 }
 
+// Creates and returns a bind context for use during PIDL parsing (stub; returns NULL).
 IBindCtx* CShellExecute::_PerfBindCtx()
 {
-    return NULL;
+    return NULL; // FIXME
 }
 
+// Resolves or uses the existing PIDL for the target path, populating shell attributes and the output PIDL pointer.
 IRET CShellExecute::_PerfPidl(LPITEMIDLIST *ppidl)
 {
     *ppidl = m_lpIDList;
@@ -584,7 +537,7 @@ IRET CShellExecute::_PerfPidl(LPITEMIDLIST *ppidl)
     return IRET_0;
 }
 
-// @implemented
+// Validates a UNC path by checking filesystem attributes or prompting for a network connection.
 IRET CShellExecute::_TryValidateUNC(LPCWSTR pszFile, LPSHELLEXECUTEINFOW sei, LPITEMIDLIST pidl)
 {
     if (!PathIsUNCW(pszFile))
@@ -608,7 +561,7 @@ IRET CShellExecute::_TryValidateUNC(LPCWSTR pszFile, LPSHELLEXECUTEINFOW sei, LP
     return IRET_0;
 }
 
-// @implemented
+// Records the application instance handle, mapping legacy HINSTANCE error codes to Win32 errors when necessary.
 BOOL CShellExecute::_ReportHinst(HINSTANCE hInstApp)
 {
     if (HandleToUlong(hInstApp) <= SE_ERR_DLLNOTFOUND && hInstApp)
@@ -621,6 +574,7 @@ BOOL CShellExecute::_ReportHinst(HINSTANCE hInstApp)
     return FALSE;
 }
 
+// Invokes registered shell execute hooks and returns IRET_0 if a hook handled the execution, IRET_2 otherwise.
 IRET CShellExecute::_TryHooks(LPSHELLEXECUTEINFOW sei)
 {
     DWORD error = ERROR_FILE_NOT_FOUND;
@@ -632,7 +586,7 @@ IRET CShellExecute::_TryHooks(LPSHELLEXECUTEINFOW sei)
     return IRET_2;
 }
 
-// @implemented
+// Looks up a registered application path for a bare filename and updates the path if a valid executable is found.
 BOOL CShellExecute::_CheckForRegisteredProgram()
 {
     WCHAR szPath[MAX_PATH];
@@ -649,7 +603,7 @@ BOOL CShellExecute::_CheckForRegisteredProgram()
     return TRUE;
 }
 
-// @implemented
+// Resolves the target path to an absolute executable path, guessing a URL scheme as a fallback.
 BOOL CShellExecute::_Resolve(LPITEMIDLIST *ppidl)
 {
     PCWSTR dirs[2] = { m_szWorkDir, NULL };
@@ -672,7 +626,7 @@ BOOL CShellExecute::_Resolve(LPITEMIDLIST *ppidl)
     return FALSE;
 }
 
-// @implemented
+// Obtains an IContextMenu from the given PIDL and invokes the shell execute verb in-process.
 BOOL CShellExecute::_ShellExecPidl(LPSHELLEXECUTEINFOW sei, LPCITEMIDLIST pidl)
 {
     IContextMenu *pContextMenu = NULL;
@@ -700,7 +654,7 @@ BOOL CShellExecute::_ShellExecPidl(LPSHELLEXECUTEINFOW sei, LPCITEMIDLIST pidl)
     return SUCCEEDED(hr);
 }
 
-// @implemented
+// Executes the shell verb on a PIDL, creating a PIDL from the path if one is not supplied.
 IRET CShellExecute::_DoExecPidl(LPSHELLEXECUTEINFOW sei, LPCITEMIDLIST pidl)
 {
     LPITEMIDLIST pidlTemp = NULL;
@@ -717,7 +671,7 @@ IRET CShellExecute::_DoExecPidl(LPSHELLEXECUTEINFOW sei, LPCITEMIDLIST pidl)
     return IRET_0;
 }
 
-// @implemented
+// Determines whether the target should be executed via its PIDL (namespace object, URL, link, etc.) and does so if appropriate.
 IRET CShellExecute::_TryExecPidl(LPSHELLEXECUTEINFOW sei, LPITEMIDLIST pidl)
 {
     if ((m_szPath[0] || pidl) && (!m_bUseClass || m_bInvokeIDList || m_bIsNamespaceObject))
@@ -740,12 +694,13 @@ IRET CShellExecute::_TryExecPidl(LPSHELLEXECUTEINFOW sei, LPITEMIDLIST pidl)
     return IRET_2;
 }
 
+// Verifies the execution trust level of the given path using Safer/Software Restriction Policies.
 IRET CShellExecute::_VerifySaferTrust(LPCWSTR szFullPathname)
 {
-    return IRET_0;
+    return IRET_0; // FIXME
 }
 
-// @implemented
+// Performs a security zone check on the file path and returns the appropriate IRET based on the zone policy.
 IRET CShellExecute::_ZoneCheckFile(LPCWSTR pszPath)
 {
     DWORD policy = 0, context = 0;
@@ -772,7 +727,7 @@ IRET CShellExecute::_ZoneCheckFile(LPCWSTR pszPath)
     return IRET_0;
 }
 
-// @implemented
+// Checks whether the file's extension is dangerous and, if so, performs zone trust checks on the path.
 IRET CShellExecute::_VerifyZoneTrust(LPCWSTR pszPath)
 {
     LPCWSTR pszExt = PathFindExtensionW(m_szPath);
@@ -786,7 +741,7 @@ IRET CShellExecute::_VerifyZoneTrust(LPCWSTR pszPath)
     return iret;
 }
 
-// @implemented
+// Verifies execution trust for the target by dispatching to zone or safer checks depending on the item type.
 IRET CShellExecute::_VerifyExecTrust(LPSHELLEXECUTEINFOW sei)
 {
     IRET iret = IRET_2;
@@ -858,7 +813,7 @@ IRET CShellExecute::_VerifyExecTrust(LPSHELLEXECUTEINFOW sei)
     return iret;
 }
 
-// @implemented
+// Creates and initializes an IQueryAssociations object from an explicit class name or registry key.
 HRESULT CShellExecute::_InitClassAssociations(LPCWSTR lpClass, HKEY hkeyClass, DWORD fMask)
 {
     HRESULT hr = AssocCreate(CLSID_QueryAssociations,
@@ -875,7 +830,7 @@ HRESULT CShellExecute::_InitClassAssociations(LPCWSTR lpClass, HKEY hkeyClass, D
     return m_pQueryAssoc->Init(ASSOCF_NONE, L"Folder", NULL, NULL);
 }
 
-// @implemented
+// Initializes shell associations for the target path or PIDL, falling back to extension-based associations if needed.
 HRESULT CShellExecute::_InitShellAssociations(LPCWSTR pszPath, LPCITEMIDLIST pidl)
 {
     HRESULT hr = E_FAIL;
@@ -946,7 +901,7 @@ cleanup:
     return hr;
 }
 
-// @implemented
+// Selects and invokes the appropriate association initialization method based on the execution context flags.
 IRET CShellExecute::_InitAssociations(LPSHELLEXECUTEINFOW sei, LPCITEMIDLIST pidl)
 {
     HRESULT hr;
@@ -967,6 +922,7 @@ IRET CShellExecute::_InitAssociations(LPSHELLEXECUTEINFOW sei, LPCITEMIDLIST pid
     return SUCCEEDED(hr) ? IRET_1 : IRET_0;
 }
 
+// Builds a DDE command string from the current execution parameters and allocates it as a global memory handle.
 HGLOBAL CShellExecute::_CreateDDECommand(INT nCmdShow, BOOL bLongNameOK, BOOL bUnicode)
 {
     HGLOBAL hResult = NULL;
@@ -1038,17 +994,20 @@ HGLOBAL CShellExecute::_CreateDDECommand(INT nCmdShow, BOOL bLongNameOK, BOOL bU
     return hResult;
 }
 
+// Attempts a fast-path DDE execution by reusing an existing conversation window.
 BOOL CShellExecute::_TryDDEShortCircuit(HWND hWnd, HGLOBAL hDdeCommand, INT nCmdShow)
 {
     return FALSE; // FIXME
 }
 
+// Creates a hidden worker window to serve as the client end of a DDE conversation.
 HWND CShellExecute::_CreateHiddenDDEWindow(HWND hWnd)
 {
     HWND hwndTopParent = GetTopParentWindow(hWnd);
     return SHCreateWorkerWindowW(DDESubClassWndProc, hwndTopParent, 0, 0, NULL, 0);
 }
 
+// Broadcasts WM_DDE_INITIATE to find an existing DDE server window and returns the conversation window handle.
 HWND CShellExecute::_GetConversationWindow(HWND hwnd)
 {
 #ifndef ILMM_IE4
@@ -1066,12 +1025,14 @@ HWND CShellExecute::_GetConversationWindow(HWND hwnd)
     return (HWND)GetPropW(hwnd, L"ddeconv");
 }
 
+// Destroys the hidden DDE worker window if it still exists.
 void CShellExecute::_DestroyHiddenDDEWindow(HWND hWnd)
 {
     if (IsWindow(hWnd))
         DestroyWindow(hWnd);
 }
 
+// Posts a WM_DDE_EXECUTE message to the server window and optionally waits for the command to complete.
 BOOL
 CShellExecute::_PostDDEExecute(HWND hHiddenWnd, HWND hConvWnd, UINT_PTR uiHi, HANDLE hDoneEvent)
 {
@@ -1100,6 +1061,7 @@ CShellExecute::_PostDDEExecute(HWND hHiddenWnd, HWND hConvWnd, UINT_PTR uiHi, HA
     return TRUE;
 }
 
+// Performs a full DDE execution sequence: creates the command, finds the server, and posts the execute message.
 IRET CShellExecute::_DDEExecute(BOOL bFlag, HWND hWnd, INT nCmdShow, BOOL bNoAsync)
 {
     DWORD  dwError       = ERROR_OUTOFMEMORY;
@@ -1192,7 +1154,7 @@ Cleanup:
     return IRET_1;
 }
 
-// @implemented
+// Attempts to execute the command via the registered WOW shell execute callback for 16-bit compatibility.
 DWORD CShellExecute::_TryWowShellExec()
 {
     ShStrA str1, str2;
@@ -1213,7 +1175,7 @@ DWORD CShellExecute::_TryWowShellExec()
     return ERROR_SUCCESS;
 }
 
-// @implemented
+// Checks restrictions and UNC validity, then attempts WOW execution before allowing normal process creation.
 BOOL CShellExecute::_ExecMayCreateProcess()
 {
     if (SHRestricted(REST_RESTRICTRUN) && RestrictedApp(m_szExecutable2) ||
@@ -1231,7 +1193,7 @@ BOOL CShellExecute::_ExecMayCreateProcess()
     return 0;
 }
 
-// @implemented
+// Prevents minimized foreground windows from being incorrectly replaced when launching with SW_SHOWMINNOACTIVE.
 void CShellExecute::_FixActivationStealingApps(HWND hWnd, INT nCmdShow)
 {
     if (nCmdShow == SW_SHOWMINNOACTIVE)
@@ -1245,12 +1207,13 @@ void CShellExecute::_FixActivationStealingApps(HWND hWnd, INT nCmdShow)
     }
 }
 
+// Fires a shell change notification for shortcut invocation (currently a stub pending SHChangeNotify implementation).
 void CShellExecute::_NotifyShortcutInvoke()
 {
     // FIXME: SHChangeNotify(SHCNE_EXTENDED_EVENT)
 }
 
-// @implemented
+// Constructs the environment block for the new process, merging the app's PATH, a custom entry, and compat layer.
 HRESULT CShellExecute::_BuildEnvironmentForNewProcess(PCWSTR pszEnvEntry)
 {
     m_EnvBlock.m_hUserToken = m_hUserToken;
@@ -1291,7 +1254,7 @@ HRESULT CShellExecute::_BuildEnvironmentForNewProcess(PCWSTR pszEnvEntry)
     return hr;
 }
 
-// @implemented
+// Returns TRUE if the target path is an executable file being opened with the default or no verb.
 BOOL CShellExecute::_FileIsApp()
 {
     if (m_szRunAsCommand[0] || !PathIsExe(m_szPath))
@@ -1300,7 +1263,7 @@ BOOL CShellExecute::_FileIsApp()
     return !m_pszVerb || StrCmpIW(m_pszVerb, L"open");
 }
 
-// @implemented
+// Returns TRUE if the application can handle long file names or if quoting makes LFN handling unnecessary.
 BOOL CShellExecute::_IsAppLFNAware()
 {
     BOOL ret = App_IsLFNAware(m_szWorkGroupHelper);
@@ -1311,6 +1274,7 @@ BOOL CShellExecute::_IsAppLFNAware()
             StrStrW(m_szRunAsCommand, L"\"%1\"") != NULL);
 }
 
+// Expands the run-as command template into application and command-line components, resolving the executable path.
 HRESULT CShellExecute::_EvaluateTemplate(LPBOOL pbLongNameOK)
 {
     WCHAR szExpanded[MAX_PATH_EX];
@@ -1357,7 +1321,7 @@ HRESULT CShellExecute::_EvaluateTemplate(LPBOOL pbLongNameOK)
     return hr;
 }
 
-// @implemented
+// Builds the final command-line string by expanding the run-as template and substituting file and parameter tokens.
 BOOL CShellExecute::_SetCommand()
 {
     LPWSTR szRunAsCommand = m_szRunAsCommand;
@@ -1444,6 +1408,7 @@ BOOL CShellExecute::_SetCommand()
     return ret;
 }
 
+// Builds the command line and environment, then spawns the target process via _SHCreateProcess.
 void CShellExecute::_DoExecCommand()
 {
     HWND hwndFore = ::GetForegroundWindow();
@@ -1491,7 +1456,7 @@ void CShellExecute::_DoExecCommand()
     }
 }
 
-// @implemented
+// Queries the class store for a new association key and updates the query object if a better handler is found.
 IRET CShellExecute::_ShouldRetryWithNewClassKey(BOOL bParse)
 {
     if (m_bAlreadyQueriedClassStore ||
@@ -1535,7 +1500,7 @@ IRET CShellExecute::_ShouldRetryWithNewClassKey(BOOL bParse)
     return IRET_2;
 }
 
-// @implemented
+// Retrieves and parses a Darwin (MSI) descriptor from the association data to build the run-as command template.
 IRET CShellExecute::_SetDarwinCmdTemplate(BOOL bParse)
 {
     INT iret = IRET_2;
@@ -1556,7 +1521,7 @@ IRET CShellExecute::_SetDarwinCmdTemplate(BOOL bParse)
     return IRET_0;
 }
 
-// @implemented
+// Tries Darwin installation first, then falls back to retrying with a new class store key if Darwin is unavailable.
 IRET CShellExecute::_MaybeInstallApp(BOOL bParse)
 {
     if (!IsDarwinEnabled())
@@ -1567,7 +1532,7 @@ IRET CShellExecute::_MaybeInstallApp(BOOL bParse)
     return iret;
 }
 
-// @implemented
+// Reads the RunAsCommand value from the application's App Paths registry key into the run-as command buffer.
 BOOL CShellExecute::_SetAppRunAsCmdTemplate()
 {
     HRESULT hr = PathToAppPathKey(m_szPath, m_szEnvEntry, _countof(m_szEnvEntry));
@@ -1584,7 +1549,7 @@ BOOL CShellExecute::_SetAppRunAsCmdTemplate()
     return m_szRunAsCommand[0] != UNICODE_NULL;
 }
 
-// @implemented
+// Resolves the command template for execution by checking Darwin, class store, App Paths, and association command.
 IRET CShellExecute::_SetCmdTemplate(BOOL bParse)
 {
     IRET iret = _MaybeInstallApp(bParse);
@@ -1610,7 +1575,7 @@ IRET CShellExecute::_SetCmdTemplate(BOOL bParse)
     return IRET_1;
 }
 
-// @implemented
+// Queries a string value from the current IQueryAssociations object and copies it to the destination buffer.
 HRESULT CShellExecute::_QueryString(
     ASSOCF    assocFlags,
     ASSOCSTR  assocStr,
@@ -1629,7 +1594,7 @@ HRESULT CShellExecute::_QueryString(
     return hr;
 }
 
-// @implemented
+// Replaces the target path with the stored URL if the associated executable is URL-aware.
 void CShellExecute::_SetFileAndUrl()
 {
     if (!m_szURL[0])
@@ -1640,7 +1605,7 @@ void CShellExecute::_SetFileAndUrl()
         StrCpyNW(m_szPath, m_szURL, _countof(m_szPath));
 }
 
-// @implemented
+// Thread entry point that forces synchronous invocation and then releases the CShellExecute object.
 DWORD CShellExecute::_InvokeAppThreadProc()
 {
     m_bNoAsync = TRUE;
@@ -1649,13 +1614,13 @@ DWORD CShellExecute::_InvokeAppThreadProc()
     return 0;
 }
 
-// @implemented
+// Static thread callback that casts the opaque pointer to CShellExecute and calls _InvokeAppThreadProc.
 DWORD CALLBACK CShellExecute::s_InvokeAppThreadProc(PVOID pThis)
 {
     return ((CShellExecute *)pThis)->_InvokeAppThreadProc();
 }
 
-// @implemented
+// Clones any borrowed pointers into owned storage and spawns a background thread to retry the invocation asynchronously.
 IRET CShellExecute::_RetryAsync()
 {
     if (m_lpIDList && !m_pidlParsed)
@@ -1688,6 +1653,7 @@ IRET CShellExecute::_RetryAsync()
     return IRET_0;
 }
 
+// Queries DDE command, application, and topic strings from the association and registers them as global atoms.
 BOOL CShellExecute::_SetDDEInfo()
 {
     if (FAILED(_QueryString(0, ASSOCSTR_DDECOMMAND, m_szDdeCommand, _countof(m_szDdeCommand))))
@@ -1718,6 +1684,7 @@ BOOL CShellExecute::_SetDDEInfo()
     return TRUE;
 }
 
+// Attempts DDE execution by initializing DDE info and dispatching the DDE execute sequence.
 IRET CShellExecute::_TryExecDDE()
 {
     if (_SetDDEInfo() && _DDEExecute(TRUE, m_hWnd, m_wShowWindow, m_bNoAsync))
@@ -1725,7 +1692,7 @@ IRET CShellExecute::_TryExecDDE()
     return IRET_2;
 }
 
-// @implemented
+// Orchestrates the full application invocation sequence: resolving the command template, DDE, and direct execution.
 IRET CShellExecute::_TryInvokeApplication(BOOL bInvoke)
 {
     IRET iret = IRET_1;
@@ -1760,6 +1727,7 @@ done:
     return iret;
 }
 
+// Drives the main shell execution pipeline: initializing, resolving, trust-checking, associating, and invoking.
 void CShellExecute::ExecuteNormal(LPSHELLEXECUTEINFOW sei)
 {
     SetAppStartingCursor(sei->hwnd, TRUE);
@@ -1789,7 +1757,7 @@ void CShellExecute::ExecuteNormal(LPSHELLEXECUTEINFOW sei)
     SetAppStartingCursor(sei->hwnd, FALSE);
 }
 
-// @implemented
+// Transfers the process handle to the caller if requested and maps the final error/instance result.
 DWORD CShellExecute::Finalize(LPSHELLEXECUTEINFOW sei)
 {
     if (!m_bCloseProcess && m_pi.hProcess && !m_dwError && (sei->fMask & SEE_MASK_NOCLOSEPROCESS))
@@ -1800,7 +1768,7 @@ DWORD CShellExecute::Finalize(LPSHELLEXECUTEINFOW sei)
     return _FinalMapError(&sei->hInstApp);
 }
 
-// @implemented
+// Converts the stored Win32 error to an HINSTANCE value and applies drive-type refinement for file-not-found errors.
 DWORD CShellExecute::_FinalMapError(HINSTANCE *phInstApp)
 {
     if (m_dwError)
@@ -1830,7 +1798,7 @@ DWORD CShellExecute::_FinalMapError(HINSTANCE *phInstApp)
     return m_dwError;
 }
 
-// @implemented
+// Maps a legacy HINSTANCE error code to the corresponding Win32 error code using the known error-pair table.
 DWORD CShellExecute::_MapHINSTToWin32Err(HINSTANCE hInstApp)
 {
     DWORD dwInst = HandleToUlong(hInstApp);
@@ -1852,7 +1820,7 @@ DWORD CShellExecute::_MapHINSTToWin32Err(HINSTANCE hInstApp)
     return ERROR_SUCCESS;
 }
 
-// @implemented
+// Maps a Win32 error code to the corresponding legacy HINSTANCE value using the known error-pair table.
 HINSTANCE CShellExecute::_MapWin32ErrToHINST(DWORD dwError)
 {
     switch (dwError)
@@ -1873,7 +1841,7 @@ HINSTANCE CShellExecute::_MapWin32ErrToHINST(DWORD dwError)
     return (HINSTANCE)UlongToHandle(ERROR_ACCESS_DENIED);
 }
 
-// @implemented
+// Allocates a CShellExecute object, runs the normal execution pipeline, finalizes the result, and releases it.
 static DWORD ShellExecuteNormal(LPSHELLEXECUTEINFOW sei)
 {
     CShellExecute *pShellExecute = new CShellExecute();
@@ -1890,7 +1858,7 @@ static DWORD ShellExecuteNormal(LPSHELLEXECUTEINFOW sei)
     return dwError;
 }
 
-// @implemented
+// Displays an appropriate error message box for a shell execute failure, selected by Win32 error code.
 static void _DisplayShellExecError(
     DWORD fMask,
     HWND hWnd,
@@ -1957,7 +1925,7 @@ static void _DisplayShellExecError(
     SetLastError(dwError);
 }
 
-// @implemented
+// Retrieves the last error if none was supplied, then delegates to _DisplayShellExecError for UI reporting.
 static void _ShellExecuteError(LPSHELLEXECUTEINFOW sei, LPCWSTR pszCaption, DWORD dwError)
 {
     if (!dwError)
@@ -2138,8 +2106,8 @@ WonShellExecuteA(HWND hWnd, LPCSTR lpVerb, LPCSTR lpFile, LPCSTR lpParameters, L
     return sei.hInstApp;
 }
 
-EXTERN_C
-HINSTANCE WINAPI
+// Executes a shell command with extended options using ANSI strings
+EXTERN_C HINSTANCE WINAPI
 RealShellExecuteExA(
     _In_opt_ HWND hwnd,
     _In_opt_ LPCSTR lpOperation,
@@ -2153,50 +2121,49 @@ RealShellExecuteExA(
     _Out_opt_ PHANDLE lphProcess,
     _In_ DWORD dwFlags)
 {
-    SHELLEXECUTEINFOA ExecInfo;
-
-    ZeroMemory(&ExecInfo, sizeof(ExecInfo));
-    ExecInfo.cbSize = sizeof(ExecInfo);
-    ExecInfo.fMask = SEE_MASK_FLAG_NO_UI | SEE_MASK_UNKNOWN_0x1000;
-    ExecInfo.hwnd = hwnd;
-    ExecInfo.lpVerb = lpOperation;
-    ExecInfo.lpFile = lpFile;
-    ExecInfo.lpParameters = lpParameters;
-    ExecInfo.lpDirectory = lpDirectory;
-    ExecInfo.nShow = (WORD)nCmdShow;
+    SHELLEXECUTEINFOA sei   = {};
+    sei.cbSize              = sizeof(sei);
+    sei.fMask               = SEE_MASK_FLAG_NO_UI | SEE_MASK_UNKNOWN_0x1000;
+    sei.hwnd                = hwnd;
+    sei.lpVerb              = lpOperation;
+    sei.lpFile              = lpFile;
+    sei.lpParameters        = lpParameters;
+    sei.lpDirectory         = lpDirectory;
+    sei.nShow               = nCmdShow;
 
     if (lpReserved)
     {
-        ExecInfo.fMask |= SEE_MASK_USE_RESERVED;
-        ExecInfo.hInstApp = (HINSTANCE)lpReserved;
+        sei.fMask |= SEE_MASK_FLAG_SEPVDM;
+        sei.hInstApp = (HINSTANCE)lpReserved;
     }
 
     if (lpTitle)
     {
-        ExecInfo.fMask |= SEE_MASK_HASTITLE;
-        ExecInfo.lpClass = lpTitle;
+        sei.fMask |= SEE_MASK_HASTITLE;
+        sei.lpClass  = lpTitle;
     }
 
-    if (dwFlags & 1)
-        ExecInfo.fMask |= SEE_MASK_FLAG_SEPVDM;
+    if (dwFlags & 0x01)
+        sei.fMask |= 0x00020000;
 
-    if (dwFlags & 2)
-        ExecInfo.fMask |= SEE_MASK_NO_CONSOLE;
+    if (dwFlags & 0x02)
+        sei.fMask |= SEE_MASK_NO_CONSOLE;
 
-    if (lphProcess == NULL)
+    if (lphProcess)
     {
-        ShellExecuteExA(&ExecInfo);
+        sei.fMask |= SEE_MASK_NOCLOSEPROCESS;
+        ShellExecuteExA(&sei);
+        *lphProcess = sei.hProcess;
     }
     else
     {
-        ExecInfo.fMask |= SEE_MASK_NOCLOSEPROCESS;
-        ShellExecuteExA(&ExecInfo);
-        *lphProcess = ExecInfo.hProcess;
+        ShellExecuteExA(&sei);
     }
 
-    return ExecInfo.hInstApp;
+    return sei.hInstApp;
 }
 
+// Unicode implementation of RealShellExecuteEx with SAL annotations, forwarding to ShellExecuteExW.
 EXTERN_C
 HINSTANCE WINAPI
 RealShellExecuteExW(
@@ -2256,6 +2223,7 @@ RealShellExecuteExW(
     return ExecInfo.hInstApp;
 }
 
+// Sets the WOW shell execute callback, delegates to RealShellExecuteExA, then clears the callback.
 EXTERN_C HINSTANCE WINAPI
 WonWOWShellExecute(
     HWND hWnd,
