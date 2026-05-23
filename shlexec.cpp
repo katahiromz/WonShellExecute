@@ -2146,10 +2146,10 @@ static void _DisplayShellExecError(
     if (bShowMsgBox)
     {
         UINT uType = MB_ICONERROR;
-        if (nTextID == 8448)
+        if (nTextID == IDS_NOMEMORY)
             uType |= MB_SYSTEMMODAL;
 
-        LPCWSTR lpFinalTitle = (nTitleID != 0) ? MAKEINTRESOURCEW(nTitleID) : pszTitle;
+        LPCWSTR lpFinalTitle = nTitleID ? MAKEINTRESOURCEW(nTitleID) : pszTitle;
 
         WonShellMessageBoxWrapW(g_hinst, hWnd, MAKEINTRESOURCEW(nTextID), lpFinalTitle, uType);
     }
