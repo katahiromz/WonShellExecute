@@ -411,6 +411,13 @@ extern "C" {
     BOOL IsMachineDomainMember(void);
     DWORD WINAPI SHGetAppCompatFlags(_In_ DWORD dwMask);
 
+    HRESULT WonSHBindToFolderIDListParent(
+        IShellFolder *psfRoot,
+        LPCITEMIDLIST pidl,
+        REFIID riid,
+        PVOID* ppv,
+        LPCITEMIDLIST *ppidlLast);
+
 #ifdef __cplusplus
 } // extern "C"
 #endif

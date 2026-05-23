@@ -285,7 +285,7 @@ INT GetUEMAssoc(LPCWSTR pszFile, LPCWSTR pszPath, LPCITEMIDLIST pidl)
 
     IShellFolder *psf = NULL;
     LPCITEMIDLIST pidlChild = NULL;
-    if (FAILED(SHBindToFolderIDListParent(NULL, pidl, IID_PPV_ARGS(&psf), &pidlChild)))
+    if (FAILED(WonSHBindToFolderIDListParent(NULL, pidl, IID_PPV_ARGS(&psf), &pidlChild)))
         return 0;
 
     INT ret = 0;
@@ -1815,6 +1815,88 @@ HWND WINAPI SHCreateWorkerWindowW(WNDPROC wndProc, HWND hWndParent, DWORD dwExSt
   }
 
   return hWnd;
+}
+
+LPITEMIDLIST SafeILClone(LPCITEMIDLIST pidl)
+{
+    return pidl ? ILClone(pidl) : NULL;
+}
+
+LPITEMIDLIST ILCloneParent(LPCITEMIDLIST pidl)
+{
+    LPITEMIDLIST pidlNew = SafeILClone(pidl);
+    if (pidlNew)
+        ILRemoveLastID(pidlNew);
+    return pidlNew;
+}
+
+HRESULT
+SHBindToObjectEx(
+    IShellFolder* pShellFolder,
+    LPCITEMIDLIST pidl,
+    IBindCtx* pBindCtx,
+    REFIID riid,
+    PVOID* ppvObj)
+{
+    if (!ppvObj)
+        return E_POINTER;
+
+    *ppvObj = NULL;
+
+    IShellFolder* pTargetFolder = pShellFolder;
+    IShellFolder* pDesktopFolderToRelease = NULL;
+
+    if (!pTargetFolder)
+    {
+        HRESULT hrDesktop = SHGetDesktopFolder(&pDesktopFolderToRelease);
+        if (FAILED(hrDesktop))
+            return E_FAIL;
+        pTargetFolder = pDesktopFolderToRelease;
+    }
+
+    HRESULT hr = E_FAIL;
+
+    if (pidl != NULL && pidl->mkid.cb > 0)
+    {
+        hr = pTargetFolder->BindToObject(pidl, pBindCtx, riid, ppvObj);
+    }
+    else
+    {
+        hr = pTargetFolder->QueryInterface(riid, ppvObj);
+    }
+
+    if (pDesktopFolderToRelease != NULL)
+        pDesktopFolderToRelease->Release();
+
+    if (SUCCEEDED(hr) && !*ppvObj)
+        return E_FAIL;
+
+    return hr;
+}
+
+HRESULT WonSHBindToFolderIDListParent(
+    IShellFolder *psfRoot,
+    LPCITEMIDLIST pidl,
+    REFIID riid,
+    PVOID* ppv,
+    LPCITEMIDLIST *ppidlLast)
+{
+    HRESULT hr;
+    LPITEMIDLIST pidlNew = ILCloneParent(pidl);
+    if (pidlNew)
+    {
+        hr = SHBindToObjectEx(psfRoot, pidlNew, 0, riid, ppv);
+        ILFree(pidlNew);
+    }
+    else
+    {
+        hr = E_OUTOFMEMORY;
+    }
+
+    if (ppidlLast)
+        *ppidlLast = ILFindLastID(pidl);
+
+    return hr;
 }
 
 } // extern "C"
