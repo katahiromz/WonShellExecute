@@ -835,8 +835,18 @@ HRESULT SEI2ICIX(
 {
     *phLocal = NULL;
     *pICIX = {};
+
+    const DWORD c_fMask = SEE_MASK_ICON | SEE_MASK_HOTKEY | SEE_MASK_NOCLOSEPROCESS |
+                          SEE_MASK_CONNECTNETDRV | SEE_MASK_NOASYNC | SEE_MASK_DOENVSUBST |
+                          SEE_MASK_FLAG_NO_UI | 0x800 | SEE_MASK_NO_CONSOLE | SEE_MASK_NO_HOOKS |
+                          SEE_MASK_HASLINKNAME | SEE_MASK_FLAG_SEPVDM |
+                          SEE_MASK_USE_RESERVED | SEE_MASK_HASTITLE |
+                          SEE_MASK_NOZONECHECKS | SEE_MASK_FLAG_LOG_USAGE |
+                          CMIC_MASK_SHIFT_DOWN | CMIC_MASK_PTINVOKE;
+    ASSERT(c_fMask == 0x348FAFF0);
+
     pICIX->cbSize    = sizeof(CMINVOKECOMMANDINFOEX);
-    pICIX->fMask     = pSEI->fMask & 0x348FAFF0;
+    pICIX->fMask     = (pSEI->fMask & c_fMask);
     pICIX->hwnd      = pSEI->hwnd;
     pICIX->nShow     = pSEI->nShow;
     pICIX->dwHotKey  = pSEI->dwHotKey;

@@ -1,5 +1,9 @@
 #pragma once
 
+#include <assert.h>
+
+#define ASSERT assert
+
 #define DebugPrintf printf
 
 #ifndef DebugPrintf

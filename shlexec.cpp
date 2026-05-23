@@ -461,8 +461,6 @@ HRESULT CEnvironmentBlock::SetVar(LPCWSTR pszName, LPCWSTR pszValue)
 
 CShellExecute::~CShellExecute()
 {
-  DWORD CurrentProcessId; // eax
-
     if (m_hHandle1)
         CloseHandle(m_hHandle1);
     if (m_dwError && m_hDdeData)
