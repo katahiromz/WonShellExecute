@@ -365,7 +365,47 @@ HRESULT CEnvironmentBlock::UpdateVar(
     LPCWSTR pszValue,
     BOOL bAppend)
 {
-    return E_NOTIMPL;
+    const INT cchName  = lstrlenW(pszName);
+    const INT cchValue = lstrlenW(pszValue);
+    HRESULT hr = _InitBlock(cchName + cchValue + 3);
+    if (FAILED(hr))
+    {
+        return hr;
+    }
+
+    LPWSTR pchVarStart = NULL;
+
+    if (!_FindVar(pszName, cchName, &pchVarStart))
+        return SetVar(pszName, pszValue);
+
+    const INT cchTotalBlock = _BlockLenCached();
+
+    if (bAppend)
+    {
+        const INT cchCurrentVar = lstrlenW(pchVarStart);
+        LPWSTR pchVarEnd = pchVarStart + cchCurrentVar;
+
+        LPWSTR pchDest = pchVarEnd + cchValue + 1;
+        const INT cchRemaining = cchTotalBlock - (pchVarEnd - m_pszzBlock);
+        MoveMemory(pchDest, pchVarEnd, cchRemaining * sizeof(WCHAR));
+
+        *pchVarEnd = chSep;
+        StrCpyW(pchVarEnd + 1, pszValue);
+    }
+    else
+    {
+        LPWSTR pchOldValueStart = pchVarStart + cchName + 1; 
+
+        LPWSTR pchDest = pchOldValueStart + cchValue + 1;
+        const INT cchRemaining = cchTotalBlock - (pchOldValueStart - m_pszzBlock);
+        MoveMemory(pchDest, pchOldValueStart, cchRemaining * sizeof(WCHAR));
+
+        StrCpyW(pchOldValueStart, pszValue);
+        pchOldValueStart[cchValue] = chSep;
+    }
+
+    m_cchBlock += (cchValue + 1);
+    return S_OK;
 }
 
 // Sets an environment variable to the specified value in the block.
@@ -379,7 +419,7 @@ HRESULT CEnvironmentBlock::SetVar(LPCWSTR pszName, LPCWSTR pszValue)
     if (FAILED(hr))
         return hr;
 
-    LPWSTR pchStart = nullptr;
+    LPWSTR pchStart = NULL;
 
     if (_FindVar(pszName, cchName, &pchStart))
     {
@@ -388,7 +428,7 @@ HRESULT CEnvironmentBlock::SetVar(LPCWSTR pszName, LPCWSTR pszValue)
 
         LPWSTR pchNextVarDest = &pchOldValue[cchNewValue + 1];
         LPWSTR pchNextVarSrc  = &pchOldValue[cchOldValue + 1];
-        
+
         const INT cchTotalBlock = _BlockLenCached();
         const INT cchRemaining  = cchTotalBlock - (pchNextVarSrc - m_pszzBlock);
         MoveMemory(pchNextVarDest, pchNextVarSrc, cchRemaining * sizeof(WCHAR));
