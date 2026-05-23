@@ -707,8 +707,7 @@ IRET CShellExecute::_PerfPidl(LPITEMIDLIST *ppidl)
     }
 
     IBindCtx *pBC = _PerfBindCtx();
-    HRESULT hr = SHParseDisplayName(m_szPath, pBC, &m_pidlParsed,
-                                    SFGAO_STORAGECAPMASK, &m_attrs);
+    HRESULT hr = SHParseDisplayName(m_szPath, pBC, &m_pidlParsed, SFGAO_STORAGECAPMASK, &m_attrs);
     if (pBC)
         pBC->Release();
 
@@ -828,11 +827,13 @@ BOOL CShellExecute::_Resolve()
 // Obtains an IContextMenu from the given PIDL and invokes the shell execute verb in-process.
 BOOL CShellExecute::_ShellExecPidl(LPSHELLEXECUTEINFOW sei, LPCITEMIDLIST pidl)
 {
+    TRACE("\n");
     IContextMenu *pContextMenu = NULL;
     HRESULT hr = SHGetUIObjectFromFullPIDL(pidl, sei->hwnd,
                                            IID_IContextMenu, (PVOID*)&pContextMenu);
     if (SUCCEEDED(hr))
     {
+        TRACE("\n");
         hr = _InvokeInProcExec(pContextMenu, sei);
         pContextMenu->Release();
     }
@@ -1961,8 +1962,13 @@ void CShellExecute::ExecuteNormal(LPSHELLEXECUTEINFOW sei)
     SetAppStartingCursor(sei->hwnd, TRUE);
 
     _Init(sei);
+
     _SetWorkingDir(sei->lpDirectory);
+    TRACE("m_szWorkDir: '%S'\n", m_szWorkDir);
+
     _SetFile(sei->lpFile, sei->fMask & 0x400000);
+    TRACE("m_szPath: '%S'\n", m_szPath);
+    TRACE("m_szURL: '%S'\n", m_szURL);
 
     LPITEMIDLIST pidl;
     if (_PerfPidl(&pidl) > 0 &&

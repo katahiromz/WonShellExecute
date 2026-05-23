@@ -770,6 +770,7 @@ HRESULT SHGetUIObjectFromFullPIDL(
 
 HRESULT _InvokeInProcExec(IContextMenu *pContextMenu, LPSHELLEXECUTEINFOW sei)
 {
+    TRACE("\n");
     HMENU hMenu = CreatePopupMenu();
     if (!hMenu)
         return E_OUTOFMEMORY;
@@ -778,6 +779,7 @@ HRESULT _InvokeInProcExec(IContextMenu *pContextMenu, LPSHELLEXECUTEINFOW sei)
     HLOCAL hLocal;
     if (FAILED(SEI2ICIX(sei, &icix, &hLocal)))
     {
+        TRACE("\n");
         DestroyMenu(hMenu);
         return E_OUTOFMEMORY;
     }
@@ -785,6 +787,7 @@ HRESULT _InvokeInProcExec(IContextMenu *pContextMenu, LPSHELLEXECUTEINFOW sei)
     const BOOL bNoVerb = !icix.lpVerb || !*icix.lpVerb;
     icix.fMask |= CMIC_MASK_FLAG_NO_UI;
 
+    TRACE("hMenu: %p\n", hMenu);
     HRESULT hr = pContextMenu->QueryContextMenu(hMenu, 0, 1, 0x7FFF,
                                                 (bNoVerb ? CMF_DEFAULTONLY : CMF_NORMAL));
     if (SUCCEEDED(hr))
@@ -795,7 +798,10 @@ HRESULT _InvokeInProcExec(IContextMenu *pContextMenu, LPSHELLEXECUTEINFOW sei)
             icix.lpVerb = (iDefItem == (UINT)-1) ? NULL : (LPCSTR)UlongToPtr(iDefItem - 1);
         }
         hr = pContextMenu->InvokeCommand((CMINVOKECOMMANDINFO*)&icix);
+        TRACE("hr: 0x%08X\n", hr);
     }
+
+    TRACE("hr: 0x%08X\n", hr);
 
     if (hLocal)
         LocalFree(hLocal);
