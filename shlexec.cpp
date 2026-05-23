@@ -156,6 +156,7 @@ protected:
     IRET _TryInvokeApplication(BOOL bInvoke);
     IRET _PerfPidl(LPITEMIDLIST *ppidl);
     IRET _TryExecPidl(LPSHELLEXECUTEINFOW sei, LPITEMIDLIST pidl);
+    BOOL _ShouldExecPidl(LPCITEMIDLIST pidl) const;
     IRET _ZoneCheckFile(LPCWSTR pszPath);
     IRET _VerifyZoneTrust(LPCWSTR pszPath);
     IRET _InitAssociations(LPSHELLEXECUTEINFOW sei, LPCITEMIDLIST pidl);
@@ -170,7 +171,9 @@ protected:
     DWORD _TryWowShellExec();
     BOOL _SetCommand();
     BOOL _ShellExecPidl(LPSHELLEXECUTEINFOW sei, LPCITEMIDLIST pidl);
-    BOOL _Resolve(LPITEMIDLIST *ppidl);
+    BOOL _Resolve();
+    BOOL _TryResolve(LPCITEMIDLIST pidl);
+    BOOL _ShouldTryResolve(LPCITEMIDLIST pidl) const;
     BOOL _ReportWin32(DWORD dwError);
     BOOL _ReportHinst(HINSTANCE hInstApp);
     BOOL _CheckForRegisteredProgram();
@@ -800,7 +803,7 @@ BOOL CShellExecute::_CheckForRegisteredProgram()
 }
 
 // Resolves the target path to an absolute executable path, guessing a URL scheme as a fallback.
-BOOL CShellExecute::_Resolve(LPITEMIDLIST *ppidl)
+BOOL CShellExecute::_Resolve()
 {
     PCWSTR dirs[2] = { m_szWorkDir, NULL };
 
@@ -867,26 +870,38 @@ IRET CShellExecute::_DoExecPidl(LPSHELLEXECUTEINFOW sei, LPCITEMIDLIST pidl)
     return IRET_0;
 }
 
+BOOL CShellExecute::_TryResolve(LPCITEMIDLIST pidl)
+{
+    return pidl || m_bNoResolve || _Resolve();
+}
+
+BOOL CShellExecute::_ShouldTryResolve(LPCITEMIDLIST pidl) const
+{
+    return (m_szPath[0] || pidl) && (!m_bUseClass || m_bInvokeIDList || m_bIsNamespaceObject);
+}
+
+BOOL CShellExecute::_ShouldExecPidl(LPCITEMIDLIST pidl) const
+{
+    if ((!m_pszVerb || !lstrcmpiW(m_pszVerb, L"open")) && !m_bNoExecPidl)
+        return TRUE;
+    if (m_bIsURL || m_bInvokeIDList || m_bIsNamespaceObject || (m_attrs & SFGAO_LINK))
+        return TRUE;
+    return !pidl && PathIsShortcut(m_szPath, INVALID_FILE_ATTRIBUTES);
+}
+
 // Determines whether the target should be executed via its PIDL (namespace object, URL, link, etc.) and does so if appropriate.
 IRET CShellExecute::_TryExecPidl(LPSHELLEXECUTEINFOW sei, LPITEMIDLIST pidl)
 {
     TRACE("\n");
-    if ((m_szPath[0] || pidl) && (!m_bUseClass || m_bInvokeIDList || m_bIsNamespaceObject))
-    {
-        if (pidl || m_bNoResolve || _Resolve(&pidl))
-        {
-            if (((!m_pszVerb || !lstrcmpiW(m_pszVerb, L"open")) && !m_bNoExecPidl) ||
-                m_bIsURL || m_bInvokeIDList || m_bIsNamespaceObject || (m_attrs & SFGAO_LINK) ||
-                (!pidl && PathIsShortcut(m_szPath, INVALID_FILE_ATTRIBUTES)))
-            {
-                return _DoExecPidl(sei, pidl);
-            }
-        }
-        else
-        {
-            return IRET_0;
-        }
-    }
+
+    if (!_ShouldTryResolve(pidl))
+        return IRET_2;
+
+    if (!_TryResolve(pidl))
+        return IRET_0;
+
+    if (_ShouldExecPidl(pidl))
+        return _DoExecPidl(sei, pidl);
 
     return IRET_2;
 }
