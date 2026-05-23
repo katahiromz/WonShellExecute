@@ -2261,7 +2261,7 @@ WonShellExecuteA(HWND hWnd, LPCSTR lpVerb, LPCSTR lpFile, LPCSTR lpParameters, L
 #endif
     if (!(SHGetAppCompatFlags(SHACF_WIN95SHLEXEC) & SHACF_WIN95SHLEXEC))
         sei.fMask |= SEE_MASK_NOASYNC;
-    ShellExecuteExA(&sei);
+    WonShellExecuteExA(&sei);
     return sei.hInstApp;
 }
 

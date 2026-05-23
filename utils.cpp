@@ -504,7 +504,7 @@ INT SHWindowsPolicy(REFGUID rguid, INT nDefault)
 
 HRESULT SHBindToIDListParent(LPCITEMIDLIST pidl, REFIID riid, PVOID *ppv, LPCITEMIDLIST *ppidlLast)
 {
-    return SHBindToFolderIDListParent(0, pidl, riid, ppv, ppidlLast);
+    return WonSHBindToFolderIDListParent(0, pidl, riid, ppv, ppidlLast);
 }
 
 HRESULT SHGetUIObjectOf(LPCITEMIDLIST pidl, HWND hWnd, REFIID riid, PVOID *ppv)
@@ -890,7 +890,7 @@ BOOL IsFolderGUID(IShellFolder *psfRoot, LPCITEMIDLIST pidl)
     IShellFolder *pFolder  = NULL;
     LPCITEMIDLIST ppidlLast = NULL;
 
-    if (FAILED(SHBindToFolderIDListParent(psfRoot, pidl, IID_PPV_ARGS(&pFolder), &ppidlLast)))
+    if (FAILED(WonSHBindToFolderIDListParent(psfRoot, pidl, IID_PPV_ARGS(&pFolder), &ppidlLast)))
         return FALSE;
 
     if (SHGetAttributes(pFolder, ppidlLast, SFGAO_FOLDER_FLAGS) == SFGAO_FOLDER_FLAGS)
