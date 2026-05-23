@@ -11,6 +11,7 @@
 #include <userenv.h>
 #include "shlexec.h"
 #include "utils.h"
+#include "debug.h"
 #include "resource.h"
 
 #ifndef STARTF_USEMONITOR
@@ -527,6 +528,7 @@ void CShellExecute::_SetStartup(const SHELLEXECUTEINFOW* pInfo)
 // Initializes the CShellExecute object from the provided SHELLEXECUTEINFOW.
 void CShellExecute::_Init(LPSHELLEXECUTEINFOW sei)
 {
+    TRACE("\n");
     _SetMask(sei->fMask);
 
     m_pszParameters = (LPWSTR)sei->lpParameters;
@@ -559,6 +561,7 @@ void CShellExecute::_Init(LPSHELLEXECUTEINFOW sei)
 // Resolves and validates the working directory.
 void CShellExecute::_SetWorkingDir(LPCWSTR lpDirectory)
 {
+    TRACE("\n");
     INT iDrive;
 
     if (!lpDirectory || !*lpDirectory)
@@ -594,6 +597,7 @@ VALIDATE:
 // Sets the target file path, detects whether it is a URL, and optionally captures a trailing URL from the buffer.
 void CShellExecute::_SetFile(LPCWSTR lpFile, BOOL bURLIsTrailing)
 {
+    TRACE("\n");
     if (lpFile && *lpFile)
     {
         m_bIsURL = UrlIsW(lpFile, URLIS_URL);
@@ -641,6 +645,7 @@ IBindCtx* CShellExecute::_PerfBindCtx()
 // Resolves or uses the existing PIDL for the target path, populating shell attributes and the output PIDL pointer.
 IRET CShellExecute::_PerfPidl(LPITEMIDLIST *ppidl)
 {
+    TRACE("\n");
     *ppidl = m_lpIDList;
 
     if (m_lpIDList)
@@ -700,6 +705,7 @@ IRET CShellExecute::_PerfPidl(LPITEMIDLIST *ppidl)
 // Validates a UNC path by checking filesystem attributes or prompting for a network connection.
 IRET CShellExecute::_TryValidateUNC(LPCWSTR pszFile, LPSHELLEXECUTEINFOW sei, LPITEMIDLIST pidl)
 {
+    TRACE("\n");
     if (!PathIsUNCW(pszFile))
         return IRET_2;
 
@@ -737,6 +743,7 @@ BOOL CShellExecute::_ReportHinst(HINSTANCE hInstApp)
 // Invokes registered shell execute hooks and returns IRET_0 if a hook handled the execution, IRET_2 otherwise.
 IRET CShellExecute::_TryHooks(LPSHELLEXECUTEINFOW sei)
 {
+    TRACE("\n");
     DWORD error = ERROR_FILE_NOT_FOUND;
     if (!(sei->fMask & SEE_MASK_NO_HOOKS) && TryShellExecuteHooks(sei) != S_FALSE)
     {
@@ -834,6 +841,7 @@ IRET CShellExecute::_DoExecPidl(LPSHELLEXECUTEINFOW sei, LPCITEMIDLIST pidl)
 // Determines whether the target should be executed via its PIDL (namespace object, URL, link, etc.) and does so if appropriate.
 IRET CShellExecute::_TryExecPidl(LPSHELLEXECUTEINFOW sei, LPITEMIDLIST pidl)
 {
+    TRACE("\n");
     if ((m_szPath[0] || pidl) && (!m_bUseClass || m_bInvokeIDList || m_bIsNamespaceObject))
     {
         if (pidl || m_bNoResolve || _Resolve(&pidl))
@@ -904,6 +912,7 @@ IRET CShellExecute::_VerifyZoneTrust(LPCWSTR pszPath)
 // Verifies execution trust for the target by dispatching to zone or safer checks depending on the item type.
 IRET CShellExecute::_VerifyExecTrust(LPSHELLEXECUTEINFOW sei)
 {
+    TRACE("\n");
     IRET iret = IRET_2;
 
     const BOOL bIsFile    = !m_lpIDList && _PathIsFile(m_szPath);
@@ -976,6 +985,7 @@ IRET CShellExecute::_VerifyExecTrust(LPSHELLEXECUTEINFOW sei)
 // Creates and initializes an IQueryAssociations object from an explicit class name or registry key.
 HRESULT CShellExecute::_InitClassAssociations(LPCWSTR lpClass, HKEY hkeyClass, DWORD fMask)
 {
+    TRACE("\n");
     HRESULT hr = AssocCreate(CLSID_QueryAssociations,
                              IID_IQueryAssociations, (PVOID*)&m_pQueryAssoc);
     if (FAILED(hr))
@@ -993,6 +1003,7 @@ HRESULT CShellExecute::_InitClassAssociations(LPCWSTR lpClass, HKEY hkeyClass, D
 // Initializes shell associations for the target path or PIDL, falling back to extension-based associations if needed.
 HRESULT CShellExecute::_InitShellAssociations(LPCWSTR pszPath, LPCITEMIDLIST pidl)
 {
+    TRACE("\n");
     HRESULT hr = E_FAIL;
     LPITEMIDLIST pidlTemp = NULL;
 
@@ -1064,6 +1075,7 @@ cleanup:
 // Selects and invokes the appropriate association initialization method based on the execution context flags.
 IRET CShellExecute::_InitAssociations(LPSHELLEXECUTEINFOW sei, LPCITEMIDLIST pidl)
 {
+    TRACE("\n");
     HRESULT hr;
 
     if (sei && (m_bUseClass || (!m_szPath[0] && !m_lpIDList)))
@@ -1854,6 +1866,7 @@ IRET CShellExecute::_TryExecDDE()
 // Orchestrates the full application invocation sequence: resolving the command template, DDE, and direct execution.
 IRET CShellExecute::_TryInvokeApplication(BOOL bInvoke)
 {
+    TRACE("\n");
     IRET iret = IRET_1;
 
     if (bInvoke)
@@ -1889,6 +1902,7 @@ done:
 // Drives the main shell execution pipeline: initializing, resolving, trust-checking, associating, and invoking.
 void CShellExecute::ExecuteNormal(LPSHELLEXECUTEINFOW sei)
 {
+    TRACE("\n");
     SetAppStartingCursor(sei->hwnd, TRUE);
 
     _Init(sei);
@@ -1909,6 +1923,7 @@ void CShellExecute::ExecuteNormal(LPSHELLEXECUTEINFOW sei)
 
     if (!m_dwError && UEMIsLoaded())
     {
+        TRACE("\n");
         INT assoc = GetUEMAssoc(m_szPath, m_szWorkGroupHelper, m_lpIDList);
         UEMFireEvent(CLSID_ActiveDesktop, 50, 2, 4, assoc);
     }
@@ -1919,6 +1934,7 @@ void CShellExecute::ExecuteNormal(LPSHELLEXECUTEINFOW sei)
 // Transfers the process handle to the caller if requested and maps the final error/instance result.
 DWORD CShellExecute::Finalize(LPSHELLEXECUTEINFOW sei)
 {
+    TRACE("\n");
     if (!m_bCloseProcess && m_pi.hProcess && !m_dwError && (sei->fMask & SEE_MASK_NOCLOSEPROCESS))
     {
         sei->hProcess = m_pi.hProcess;
@@ -2003,6 +2019,7 @@ HINSTANCE CShellExecute::_MapWin32ErrToHINST(DWORD dwError)
 // Allocates a CShellExecute object, runs the normal execution pipeline, finalizes the result, and releases it.
 static DWORD ShellExecuteNormal(LPSHELLEXECUTEINFOW sei)
 {
+    TRACE("\n");
     CShellExecute *pShellExecute = new CShellExecute();
     if (!pShellExecute)
     {
@@ -2025,6 +2042,7 @@ static void _DisplayShellExecError(
     PCWSTR pszCaption,
     DWORD dwError)
 {
+    TRACE("\n");
     BOOL bShowMsgBox = FALSE;
     PCWSTR pszTitle = pszCaption ? pszCaption : pszText;
     INT nTextID = 0;
@@ -2102,6 +2120,7 @@ static void _ShellExecuteError(LPSHELLEXECUTEINFOW sei, LPCWSTR pszCaption, DWOR
 // @implemented
 EXTERN_C BOOL WINAPI WonShellExecuteExW(LPSHELLEXECUTEINFOW sei)
 {
+    TRACE("\n");
     HRESULT hrCoInit = SHCoInitialize();
 
     DWORD dwError;
@@ -2161,8 +2180,9 @@ WonShellExecuteW(
     LPCWSTR lpDirectory,
     INT nShowCmd)
 {
-    SHELLEXECUTEINFOW sei;
+    TRACE("\n");
 
+    SHELLEXECUTEINFOW sei;
     sei.cbSize = sizeof(sei);
     sei.fMask = SEE_MASK_FLAG_NO_UI | SEE_MASK_UNKNOWN_0x1000;
     sei.hwnd = hwnd;
@@ -2200,6 +2220,7 @@ WonShellExecuteExA(LPSHELLEXECUTEINFOA sei)
     SHELLEXECUTEINFOW seiW;
     BOOL ret;
     WCHAR *wVerb = NULL, *wFile = NULL, *wParameters = NULL, *wDirectory = NULL, *wClass = NULL;
+    TRACE("\n");
 
     if (sei->cbSize != sizeof(SHELLEXECUTEINFOA))
     {
@@ -2248,6 +2269,7 @@ WonShellExecuteExA(LPSHELLEXECUTEINFOA sei)
 EXTERN_C HINSTANCE WINAPI
 WonShellExecuteA(HWND hWnd, LPCSTR lpVerb, LPCSTR lpFile, LPCSTR lpParameters, LPCSTR lpDirectory, INT iShowCmd)
 {
+    TRACE("\n");
     SHELLEXECUTEINFOA sei;
     sei.cbSize = sizeof(sei);
     sei.fMask = SEE_MASK_FLAG_NO_UI | SEE_MASK_UNKNOWN_0x1000;
@@ -2287,6 +2309,7 @@ RealShellExecuteExA(
     _Out_opt_ PHANDLE lphProcess,
     _In_ DWORD dwFlags)
 {
+    TRACE("\n");
     SHELLEXECUTEINFOA sei   = {};
     sei.cbSize              = sizeof(sei);
     sei.fMask               = SEE_MASK_FLAG_NO_UI | SEE_MASK_UNKNOWN_0x1000;
@@ -2346,6 +2369,7 @@ RealShellExecuteExW(
     _In_ DWORD dwFlags)
 {
     SHELLEXECUTEINFOW ExecInfo;
+    TRACE("\n");
 
     ZeroMemory(&ExecInfo, sizeof(ExecInfo));
     ExecInfo.cbSize = sizeof(ExecInfo);
@@ -2401,6 +2425,7 @@ WonWOWShellExecute(
     WOWSHELLEXECHOOKPROC callback)
 {
     HINSTANCE result;
+    TRACE("\n");
     g_fnWowShellExecCB = callback;
     if (!lpParameters)
         lpParameters = "";
@@ -2420,7 +2445,7 @@ HINSTANCE WINAPI WOWShellExecute(
     WOWSHELLEXECHOOKPROC callback)
 {
     HINSTANCE result;
-
+    TRACE("\n");
     g_fnWowShellExecCB = callback;
     if (!lpParameters)
         lpParameters = "";

@@ -11,6 +11,7 @@
 #include <winsafer.h>
 #include "shlexec.h"
 #include "utils.h"
+#include "debug.h"
 #include "resource.h"
 
 extern "C" {
@@ -273,6 +274,7 @@ SHGetAttributes(_In_ IShellFolder* psf, _In_ LPCITEMIDLIST pidl, _In_ DWORD dwAt
 
 INT GetUEMAssoc(LPCWSTR pszFile, LPCWSTR pszPath, LPCITEMIDLIST pidl)
 {
+    TRACE("\n");
     LPCWSTR pszFileExt = PathFindExtensionW(pszFile);
     if (!StrCmpICW(pszFileExt, L".exe"))
         return 1;
@@ -389,6 +391,7 @@ HRESULT UEMFireEvent(
     WPARAM  wparam,
     LPARAM  lparam)
 {
+    TRACE("\n");
 #ifdef NO_ASSIST
     return E_NOTIMPL;
 #else
