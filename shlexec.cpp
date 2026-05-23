@@ -1771,9 +1771,13 @@ BOOL CShellExecute::_SetAppRunAsCmdTemplate()
 // Resolves the command template for execution by checking Darwin, class store, App Paths, and association command.
 IRET CShellExecute::_SetCmdTemplate(BOOL bParse)
 {
+    TRACE("\n");
+
     IRET iret = _MaybeInstallApp(bParse);
     if (iret != IRET_2)
         return iret;
+
+    TRACE("\n");
 
     if (m_bClassStoreOnly)
     {
@@ -1781,15 +1785,24 @@ IRET CShellExecute::_SetCmdTemplate(BOOL bParse)
         return IRET_0;
     }
 
-    if (!m_EnvBlock.m_nRunAs && PathIsExe(m_szPath) && _SetAppRunAsCmdTemplate())
-        return IRET_1;
+    TRACE("\n");
 
-    if (FAILED(_QueryString(ASSOCF_NONE, ASSOCSTR_COMMAND,
-                            m_szRunAsCommand, _countof(m_szRunAsCommand))))
+    if (!m_EnvBlock.m_nRunAs && PathIsExe(m_szPath) && _SetAppRunAsCmdTemplate())
     {
         m_dwError = ERROR_NO_ASSOCIATION;
         return IRET_0;
     }
+
+    TRACE("\n");
+
+    if (FAILED(_QueryString(ASSOCF_NONE, ASSOCSTR_COMMAND, m_szRunAsCommand,
+                            _countof(m_szRunAsCommand))))
+    {
+        m_dwError = ERROR_NO_ASSOCIATION;
+        return IRET_0;
+    }
+
+    TRACE("\n");
 
     return IRET_1;
 }
@@ -1818,8 +1831,7 @@ void CShellExecute::_SetFileAndUrl()
 {
     if (!m_szURL[0])
         return;
-    HRESULT hr = _QueryString(ASSOCF_NONE, ASSOCSTR_EXECUTABLE,
-                              m_szEnvEntry, _countof(m_szEnvEntry));
+    HRESULT hr = _QueryString(ASSOCF_NONE, ASSOCSTR_EXECUTABLE, m_szEnvEntry, _countof(m_szEnvEntry));
     if (SUCCEEDED(hr) && DoesAppWantUrl(m_szEnvEntry) )
         StrCpyNW(m_szPath, m_szURL, _countof(m_szPath));
 }
@@ -1906,6 +1918,7 @@ BOOL CShellExecute::_SetDDEInfo()
 // Attempts DDE execution by initializing DDE info and dispatching the DDE execute sequence.
 IRET CShellExecute::_TryExecDDE()
 {
+    TRACE("\n");
     if (_SetDDEInfo() && _DDEExecute(TRUE, m_hWnd, m_wShowWindow, m_bNoAsync))
         return IRET_0;
     return IRET_2;
@@ -1915,32 +1928,26 @@ IRET CShellExecute::_TryExecDDE()
 IRET CShellExecute::_TryInvokeApplication(BOOL bInvoke)
 {
     TRACE("\n");
-    IRET iret = IRET_1;
+    IRET iret;
 
-    if (bInvoke)
+    if (!bInvoke || (iret = _SetCmdTemplate(bInvoke)) >= IRET_1)
     {
-        iret = _SetCmdTemplate(bInvoke);
-        if (iret < 1)
-            goto done;
+        _SetFileAndUrl();
+        iret = _TryExecDDE();
+
+        if (iret >= IRET_1)
+        {
+            if (!bInvoke)
+                iret = _SetCmdTemplate(FALSE);
+
+            if (iret >= IRET_1)
+            {
+                _DoExecCommand();
+                iret = IRET_0;
+            }
+        }
     }
 
-    _SetFileAndUrl();
-
-    iret = _TryExecDDE();
-    if (iret < 1)
-        goto done;
-
-    if (!bInvoke)
-    {
-        iret = _SetCmdTemplate(0);
-        if (iret < 1)
-            goto done;
-    }
-
-    _DoExecCommand();
-    iret = IRET_0;
-
-done:
     if (iret == IRET_FAILED)
         return _RetryAsync();
 
