@@ -739,6 +739,8 @@ HRESULT SHGetUIObjectOf(LPCITEMIDLIST pidl, HWND hWnd, REFIID riid, PVOID *ppv)
     if (SUCCEEDED(hr))
     {
         hr = pFolder->GetUIObjectOf(hWnd, 1, &pidlChild, riid, NULL, ppv);
+        if (FAILED(hr))
+            ERR("hr: 0x%08X, pidlChild: %p\n", hr, pidlChild);
         pFolder->Release();
     }
     return hr;
@@ -798,7 +800,8 @@ HRESULT _InvokeInProcExec(IContextMenu *pContextMenu, LPSHELLEXECUTEINFOW sei)
             icix.lpVerb = (iDefItem == (UINT)-1) ? NULL : (LPCSTR)UlongToPtr(iDefItem - 1);
         }
         hr = pContextMenu->InvokeCommand((CMINVOKECOMMANDINFO*)&icix);
-        TRACE("hr: 0x%08X\n", hr);
+        if (FAILED(hr))
+            ERR("InvokeCommand failed: 0x%08X\n", hr);
     }
 
     TRACE("hr: 0x%08X\n", hr);
@@ -2094,13 +2097,15 @@ SHBindToObjectEx(
 
     HRESULT hr = E_FAIL;
 
-    if (pidl != NULL && pidl->mkid.cb > 0)
+    if (pidl && pidl->mkid.cb > 0)
     {
         hr = pTargetFolder->BindToObject(pidl, pBindCtx, riid, ppvObj);
+        TRACE("hr: 0x%08X\n", hr);
     }
     else
     {
         hr = pTargetFolder->QueryInterface(riid, ppvObj);
+        TRACE("hr: 0x%08X\n", hr);
     }
 
     if (pDesktopFolderToRelease != NULL)
@@ -2129,6 +2134,7 @@ HRESULT WonSHBindToFolderIDListParent(
     else
     {
         hr = E_OUTOFMEMORY;
+        TRACE("\n");
     }
 
     if (ppidlLast)

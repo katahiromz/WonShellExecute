@@ -17,9 +17,6 @@
 #ifndef STARTF_USEMONITOR
     #define STARTF_USEMONITOR 0x400
 #endif
-#ifndef ASSOCF_NONE
-    #define ASSOCF_NONE 0
-#endif
 #define SEE_MASK_CLASSALL (SEE_MASK_CLASSNAME | SEE_MASK_CLASSKEY)
 
 enum IRET
@@ -703,6 +700,7 @@ IRET CShellExecute::_PerfPidl(LPITEMIDLIST *ppidl)
         if (FAILED(hr))
             m_attrs = 0;
 
+        TRACE("m_szPath: '%S'\n", m_szPath);
         return IRET_1;
     }
 
@@ -833,9 +831,11 @@ BOOL CShellExecute::_ShellExecPidl(LPSHELLEXECUTEINFOW sei, LPCITEMIDLIST pidl)
                                            IID_IContextMenu, (PVOID*)&pContextMenu);
     if (SUCCEEDED(hr))
     {
-        TRACE("\n");
         hr = _InvokeInProcExec(pContextMenu, sei);
         pContextMenu->Release();
+
+        if (FAILED(hr))
+            ERR("_InvokeInProcExec failed: 0x%08X\n", hr);
     }
 
     if (FAILED(hr))
@@ -1038,12 +1038,12 @@ HRESULT CShellExecute::_InitClassAssociations(LPCWSTR lpClass, HKEY hkeyClass, D
         return hr;
 
     if ((fMask & SEE_MASK_CLASSKEY) == SEE_MASK_CLASSKEY)
-        return m_pQueryAssoc->Init(ASSOCF_NONE, NULL, hkeyClass, NULL);
+        return m_pQueryAssoc->Init(0, NULL, hkeyClass, NULL);
 
     if ((fMask & SEE_MASK_CLASSKEY) == SEE_MASK_CLASSNAME)
-        return m_pQueryAssoc->Init(ASSOCF_NONE, lpClass, NULL, NULL);
+        return m_pQueryAssoc->Init(0, lpClass, NULL, NULL);
 
-    return m_pQueryAssoc->Init(ASSOCF_NONE, L"Folder", NULL, NULL);
+    return m_pQueryAssoc->Init(0, L"Folder", NULL, NULL);
 }
 
 // Initializes shell associations for the target path or PIDL, falling back to extension-based associations if needed.
@@ -1082,14 +1082,16 @@ try_assoc:
         if (pBC)
             pBC->Release();
 
+        if (FAILED(hr))
+            ERR("SHGetAssociations failed: 0x%08X\n", hr);
+
         DWORD cbData = 0;
         const BOOL bHasCommand = SUCCEEDED(hr) && (
-            SUCCEEDED(m_pQueryAssoc->GetString(ASSOCF_NONE, ASSOCSTR_COMMAND,
-                                               m_pszVerb, NULL, &cbData)) ||
-            SUCCEEDED(m_pQueryAssoc->GetData(ASSOCF_NONE, ASSOCDATA_MSIDESCRIPTOR,
-                                             m_pszVerb, NULL, &cbData))
+            SUCCEEDED(m_pQueryAssoc->GetString(0, ASSOCSTR_COMMAND, m_pszVerb, NULL, &cbData)) ||
+            SUCCEEDED(m_pQueryAssoc->GetData(0, ASSOCDATA_MSIDESCRIPTOR, m_pszVerb, NULL, &cbData))
         );
 
+        TRACE("bHasCommand: %d\n", bHasCommand);
         if (!bHasCommand)
         {
             if (!m_pQueryAssoc)
@@ -1097,9 +1099,12 @@ try_assoc:
 
             if (m_pQueryAssoc)
             {
-                hr = m_pQueryAssoc->Init(ASSOCF_NONE, L"Unknown", NULL, NULL);
+                hr = m_pQueryAssoc->Init(0, L"Unknown", NULL, NULL);
                 if (SUCCEEDED(hr) && m_bNoUI)
+                {
                     m_bClassStoreOnly = TRUE;
+                    TRACE("m_bClassStoreOnly: TRUE\n");
+                }
             }
         }
     }
@@ -1364,7 +1369,7 @@ Cleanup:
 
     if (bFlag && dwError == ERROR_FILE_NOT_FOUND)
     {
-        _QueryString(ASSOCF_NONE, ASSOCSTR_DDEIFEXEC, m_szDdeCommand, _countof(m_szDdeCommand));
+        _QueryString(0, ASSOCSTR_DDEIFEXEC, m_szDdeCommand, _countof(m_szDdeCommand));
         return IRET_0;
     }
 
@@ -1704,7 +1709,8 @@ IRET CShellExecute::_ShouldRetryWithNewClassKey(BOOL bParse)
         return IRET_2;
 
     IQueryAssociations *pNewAssoc = NULL;
-    if (SUCCEEDED(SHGetAssociations(pidl, &pNewAssoc)))
+    HRESULT hr = SHGetAssociations(pidl, &pNewAssoc);
+    if (SUCCEEDED(hr))
     {
         m_pQueryAssoc->Release();
         m_pQueryAssoc = pNewAssoc;
@@ -1713,6 +1719,7 @@ IRET CShellExecute::_ShouldRetryWithNewClassKey(BOOL bParse)
             m_pszVerb = NULL;
 
         m_bClassStoreOnly = FALSE;
+        TRACE("m_bClassStoreOnly: FALSE\n");
         m_bAlreadyQueriedClassStore = TRUE;
     }
 
@@ -1725,7 +1732,7 @@ IRET CShellExecute::_SetDarwinCmdTemplate(BOOL bParse)
 {
     INT iret = IRET_2;
     DWORD cbAppPathKey = sizeof(m_szAppPathKey);
-    HRESULT hr = m_pQueryAssoc->GetData(ASSOCF_NONE, ASSOCDATA_MSIDESCRIPTOR, m_pszVerb,
+    HRESULT hr = m_pQueryAssoc->GetData(0, ASSOCDATA_MSIDESCRIPTOR, m_pszVerb,
                                         m_szAppPathKey, &cbAppPathKey);
     if (FAILED(hr))
         return IRET_2;
@@ -1796,8 +1803,7 @@ IRET CShellExecute::_SetCmdTemplate(BOOL bParse)
 
     TRACE("\n");
 
-    if (FAILED(_QueryString(ASSOCF_NONE, ASSOCSTR_COMMAND, m_szRunAsCommand,
-                            _countof(m_szRunAsCommand))))
+    if (FAILED(_QueryString(0, ASSOCSTR_COMMAND, m_szRunAsCommand, _countof(m_szRunAsCommand))))
     {
         m_dwError = ERROR_NO_ASSOCIATION;
         return IRET_0;
@@ -1832,7 +1838,7 @@ void CShellExecute::_SetFileAndUrl()
 {
     if (!m_szURL[0])
         return;
-    HRESULT hr = _QueryString(ASSOCF_NONE, ASSOCSTR_EXECUTABLE, m_szEnvEntry, _countof(m_szEnvEntry));
+    HRESULT hr = _QueryString(0, ASSOCSTR_EXECUTABLE, m_szEnvEntry, _countof(m_szEnvEntry));
     if (SUCCEEDED(hr) && DoesAppWantUrl(m_szEnvEntry) )
         StrCpyNW(m_szPath, m_szURL, _countof(m_szPath));
 }
