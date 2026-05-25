@@ -8,7 +8,7 @@ cmake_minimum_required(VERSION 3.10)
 enable_testing()
 
 # project name, version, and languages
-project(WonShellExecute VERSION 0.0 LANGUAGES CXX RC)
+project(WonShellExecute VERSION 0.1 LANGUAGES CXX RC)
 
 # support unicode
 add_definitions(-DUNICODE -D_UNICODE)
@@ -49,5 +49,10 @@ target_link_libraries(test1 PRIVATE shlexec shlwapi userenv)
 add_executable(test2 test2.cpp shlexec_res.rc)
 target_link_libraries(test2 PRIVATE shlexec shlwapi userenv)
 
-# add test
+# test3.exe
+add_executable(test3 test3.cpp shlexec_res.rc)
+target_link_libraries(test3 PRIVATE shlexec shlwapi userenv)
+
+# add tests
 add_test(NAME test2 COMMAND test2)
+add_test(NAME test3 COMMAND test3)
