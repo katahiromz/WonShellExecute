@@ -4,6 +4,10 @@
 
 #pragma once
 
+#ifndef SHSTR_BUFF_SIZE
+    #define SHSTR_BUFF_SIZE 128
+#endif
+
 class ShStrA
 {
 public:
@@ -67,7 +71,7 @@ public:
     }
 
 protected:
-    CHAR m_szBuff[66];
+    CHAR m_szBuff[SHSTR_BUFF_SIZE];
     PCHAR m_pch;
     INT m_cchBuff;
 
@@ -185,7 +189,7 @@ public:
     }
 
 protected:
-    WCHAR m_szBuff[66];
+    WCHAR m_szBuff[SHSTR_BUFF_SIZE];
     PWCHAR m_pch;
     INT m_cchBuff;
 
