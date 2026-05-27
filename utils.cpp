@@ -2509,10 +2509,9 @@ HRESULT AssocQueryStringWWrap(
 {
     TRACE("(0x%X, %d, '%S', '%S', %p, %p)\n", cfFlags, str, pszAssoc, pszExtra, pszOut, pcchOut);
     HRESULT hr = AssocQueryStringW(cfFlags, str, pszAssoc, pszExtra, pszOut, pcchOut);
-    if (IS_INTRESOURCE(pcchOut))
-        ERR("hr: 0x%08X, pszOut: '%S'\n", hr, pszOut);
-    else
-        ERR("hr: 0x%08X, pszOut: '%S', *pcchOut: %ld\n", hr, pszOut, *pcchOut);
+    CHAR sz[MAX_PATH];
+    WideCharToMultiByte(CP_ACP, 0, pszOut, -1, sz, _countof(sz), NULL, NULL);
+    ERR("hr: 0x%08X, pszOut: '%s'\n", hr, sz);
     return hr;
 }
 
