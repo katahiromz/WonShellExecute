@@ -11,6 +11,7 @@
 #include <userenv.h>
 #include "shlexec.h"
 #include "utils.h"
+#include "shstr.h"
 #include "debug.h"
 #include "resource.h"
 
