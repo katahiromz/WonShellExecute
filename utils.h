@@ -196,6 +196,14 @@ extern "C" {
 
     INT WINAPIV WonShellMessageBoxWrapW(HINSTANCE hInstance, HWND hWnd, LPCWSTR lpText, LPCWSTR lpCaption, UINT uType, ...);
 
+    HRESULT AssocQueryStringWWrap(
+        ASSOCF cfFlags,
+        ASSOCSTR str,
+        LPCWSTR pszAssoc,
+        LPCWSTR pszExtra,
+        LPWSTR pszOut,
+        DWORD *pcchOut);
+
 #ifdef __cplusplus
 } // extern "C"
 #endif

@@ -2499,4 +2499,21 @@ INT WINAPIV WonShellMessageBoxWrapW(HINSTANCE hInstance, HWND hWnd, LPCWSTR lpTe
     return ret;
 }
 
+HRESULT AssocQueryStringWWrap(
+    ASSOCF cfFlags,
+    ASSOCSTR str,
+    LPCWSTR pszAssoc,
+    LPCWSTR pszExtra,
+    LPWSTR pszOut,
+    DWORD *pcchOut)
+{
+    TRACE("(0x%X, %d, '%S', '%S', %p, %p)\n", cfFlags, str, pszAssoc, pszExtra, pszOut, pcchOut);
+    HRESULT hr = AssocQueryStringW(cfFlags, str, pszAssoc, pszExtra, pszOut, pcchOut);
+    if (IS_INTRESOURCE(pcchOut))
+        ERR("hr: 0x%08X, pszOut: '%S'\n", hr, pszOut);
+    else
+        ERR("hr: 0x%08X, pszOut: '%S', *pcchOut: %ld\n", hr, pszOut, *pcchOut);
+    return hr;
+}
+
 } // extern "C"

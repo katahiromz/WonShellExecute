@@ -1514,12 +1514,12 @@ HRESULT CShellExecute::_EvaluateTemplate(LPBOOL pbLongNameOK)
 
         DWORD cchFriendlyName = _countof(m_szFriendlyAppName);
 
-        AssocQueryStringW(ASSOCF_VERIFY | ASSOCF_INIT_BYEXENAME,
-                          ASSOCSTR_FRIENDLYAPPNAME,
-                          m_szWorkGroupHelper,
-                          NULL,
-                          m_szFriendlyAppName,
-                          &cchFriendlyName);
+        AssocQueryStringWWrap(ASSOCF_VERIFY | ASSOCF_INIT_BYEXENAME,
+                              ASSOCSTR_FRIENDLYAPPNAME,
+                              m_szWorkGroupHelper,
+                              NULL,
+                              m_szFriendlyAppName,
+                              &cchFriendlyName);
 
         StringCchCopyW(m_szExecutable2, _countof(m_szExecutable2), m_szWorkGroupHelper);
         return S_OK;
@@ -1562,12 +1562,12 @@ BOOL CShellExecute::_SetCommand()
 
         // Get friendly name
         dwAssocBufLen = _countof(m_szFriendlyAppName);
-        AssocQueryStringW(ASSOCF_OPEN_BYEXENAME | ASSOCF_VERIFY,
-                          ASSOCSTR_FRIENDLYAPPNAME,
-                          m_szWorkGroupHelper,
-                          NULL,
-                          m_szFriendlyAppName,
-                          &dwAssocBufLen);
+        AssocQueryStringWWrap(ASSOCF_OPEN_BYEXENAME | ASSOCF_VERIFY,
+                              ASSOCSTR_FRIENDLYAPPNAME,
+                              m_szWorkGroupHelper,
+                              NULL,
+                              m_szFriendlyAppName,
+                              &dwAssocBufLen);
 
         StringCchCopyW(m_szExecutable2, _countof(m_szExecutable2), m_szPath);
     }

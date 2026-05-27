@@ -20,6 +20,6 @@
 #endif
 
 #define TRACE(fmt, ...) \
-    DebugPrintf("%s (%d): %s: " fmt, __FILE__, __LINE__, __func__, ##__VA_ARGS__);
+    DebugPrintf("%s (%d): %s: " fmt, __FILE__, __LINE__, __func__, ##__VA_ARGS__)
 
 #define ERR TRACE
